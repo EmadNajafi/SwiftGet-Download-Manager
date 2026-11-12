@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="icons/icon48.png" width="32" height="32" alt="">
+    <div>
+      <div class="title">SwiftGet</div>
+      <div id="status" class="status"><span class="dot"></span><span id="statusText"></span></div>
+    </div>
+  </header>
+  <label class="row">
+    <div>
+      <div class="label" data-i18n="popupCapture"></div>
+      <div class="hint" data-i18n="popupCaptureHint"></div>
+    </div>
+    <input id="enabled" type="checkbox" class="switch">
+  </label>
+  <p id="help" class="help" data-i18n="popupOpenApp" hidden></p>
+  <script src="popup.js"></script>
+</body>
+</html>

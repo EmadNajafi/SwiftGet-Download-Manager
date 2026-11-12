@@ -1,0 +1,37 @@
+<Window x:Class="SwiftGet.Views.CompleteWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l="clr-namespace:SwiftGet.Core"
+        Title="{l:Tr NotifyComplete}" Width="440" SizeToContent="Height" ResizeMode="NoResize"
+        FlowDirection="{Binding Flow, Source={x:Static l:Loc.I}}"
+        FontFamily="{StaticResource UiFont}" FontSize="13" Topmost="True" ShowInTaskbar="True"
+        Background="{DynamicResource Bg}" Foreground="{DynamicResource Text}">
+    <StackPanel Margin="22,20,22,20">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Border Width="48" Height="48" CornerRadius="24" Background="{DynamicResource SuccessSoft}" VerticalAlignment="Top">
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xE73E;" FontSize="22" Foreground="{DynamicResource Success}"
+                           HorizontalAlignment="Center"/>
+            </Border>
+            <StackPanel Grid.Column="1" Margin="14,2,0,0">
+                <TextBlock Text="{l:Tr NotifyComplete}" Style="{StaticResource H2}"/>
+                <TextBlock Text="{Binding FileName, Mode=OneWay}" Margin="0,4,0,0" FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis" ToolTip="{Binding FullPath, Mode=OneWay}"/>
+                <TextBlock Text="{Binding SizeText, Mode=OneWay}" Style="{StaticResource Caption}" Margin="0,2,0,0"/>
+                <TextBlock Text="{Binding SaveFolder, Mode=OneWay}" Style="{StaticResource Caption}" Margin="0,2,0,0"
+                           TextTrimming="CharacterEllipsis" FlowDirection="LeftToRight" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </Grid>
+        <DockPanel Margin="0,20,0,0" LastChildFill="False">
+            <Button DockPanel.Dock="Right" Style="{StaticResource AccentButton}" IsDefault="True" Click="Open_Click"
+                    Content="{l:Tr Open}"/>
+            <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Click="Folder_Click"
+                    Content="{l:Tr OpenFolder}"/>
+            <Button DockPanel.Dock="Left" Style="{StaticResource SecondaryButton}" IsCancel="True" Click="Close_Click"
+                    Content="{l:Tr Close}"/>
+        </DockPanel>
+    </StackPanel>
+</Window>

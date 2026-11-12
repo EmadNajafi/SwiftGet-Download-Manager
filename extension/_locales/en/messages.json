@@ -1,0 +1,10 @@
+{
+  "extName": { "message": "SwiftGet Integration" },
+  "extDescription": { "message": "Sends your browser downloads to the SwiftGet download manager." },
+  "menuDownload": { "message": "Download with SwiftGet" },
+  "popupCapture": { "message": "Catch downloads" },
+  "popupCaptureHint": { "message": "Send new browser downloads to SwiftGet" },
+  "popupConnected": { "message": "SwiftGet is running" },
+  "popupDisconnected": { "message": "SwiftGet isn't running. Downloads stay in the browser." },
+  "popupOpenApp": { "message": "Start SwiftGet on your computer to use it." }
+}

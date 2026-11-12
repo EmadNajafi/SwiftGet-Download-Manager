@@ -1,0 +1,10 @@
+{
+  "extName": { "message": "SwiftGet Integration" },
+  "extDescription": { "message": "دانلودهای مرورگر را به برنامهٔ مدیریت دانلود SwiftGet می‌فرستد." },
+  "menuDownload": { "message": "دانلود با SwiftGet" },
+  "popupCapture": { "message": "گرفتن دانلودها" },
+  "popupCaptureHint": { "message": "دانلودهای جدید مرورگر به SwiftGet فرستاده شوند" },
+  "popupConnected": { "message": "SwiftGet در حال اجراست" },
+  "popupDisconnected": { "message": "SwiftGet اجرا نشده است. دانلودها در خود مرورگر انجام می‌شوند." },
+  "popupOpenApp": { "message": "برای استفاده، SwiftGet را روی کامپیوتر اجرا کنید." }
+}
