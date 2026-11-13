@@ -295,6 +295,30 @@
             </DockPanel>
         </Border>
 
+        <!-- ============================ update banner ============================ -->
+        <Border x:Name="UpdateBanner" DockPanel.Dock="Top" Visibility="Collapsed" Background="{DynamicResource SuccessSoft}"
+                BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="14,8">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="30" Height="30" Margin="6,0,0,0"
+                        Click="UpdateDismiss_Click" ToolTip="{l:Tr Close}">
+                    <TextBlock Style="{StaticResource Glyph}" Text="&#xE711;" FontSize="11"/>
+                </Button>
+                <Button DockPanel.Dock="Right" Style="{StaticResource AccentButton}" Height="32" MinWidth="0" Padding="14,0" Margin="8,0,0,0"
+                        Click="UpdateNow_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource Glyph}" Text="&#xE896;" FontSize="12" Margin="0,0,7,0"/>
+                        <TextBlock Text="{l:Tr UpdNow}"/>
+                    </StackPanel>
+                </Button>
+                <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButton}" Height="32" MinWidth="0" Padding="14,0"
+                        Click="UpdateNow_Click" Content="{l:Tr UpdWhatsNew}"/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Style="{StaticResource Glyph}" Text="&#xE946;" FontSize="16" Foreground="{DynamicResource Success}" Margin="0,0,10,0"/>
+                    <TextBlock x:Name="UpdateBannerText" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
         <!-- ============================ status bar ============================ -->
         <Border DockPanel.Dock="Bottom" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Border}"
                 BorderThickness="0,1,0,0" Padding="12,5">

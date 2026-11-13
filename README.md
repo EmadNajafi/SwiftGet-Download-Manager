@@ -91,6 +91,12 @@ dotnet run --project SwiftGet          # run from source
 
 Pushing a tag like `v1.0.1` builds the installer on GitHub Actions and publishes a release automatically.
 
+### Publishing a new version
+
+1. Raise `<Version>` in `SwiftGet/SwiftGet.csproj` (and `"version"` in `extension/manifest.json` if the extension changed).
+2. Commit, then `git tag v2.1.0` and `git push origin main --tags`. GitHub Actions builds the installer and creates the release; write what changed in the release notes.
+3. Running copies of SwiftGet check GitHub every 6 hours. They show a notification and a banner, and install the update with one click.
+
 ### Project layout
 
 | Path | What it does |

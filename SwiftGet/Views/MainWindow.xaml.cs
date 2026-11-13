@@ -215,12 +215,25 @@ public partial class MainWindow : Window
 
     // ------------------------------------------------------------------ updates
 
+    static readonly TimeSpan UpdateInterval = TimeSpan.FromHours(6);
+    UpdateInfo? _available;
+    bool _updateNotified;
+    DispatcherTimer? _updateTimer;
+
+    /// <summary>
+    /// Checks for a new version shortly after start and then every few hours while SwiftGet runs
+    /// (it usually stays in the notification area for days).
+    /// </summary>
     public void ScheduleUpdateCheck()
     {
-        if (!_m.Settings.CheckForUpdates || DateTime.Now - _m.Settings.LastUpdateCheck < TimeSpan.FromDays(1)) return;
-        var t = new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
-        t.Tick += async (_, _) => { t.Stop(); await CheckForUpdatesAsync(silent: true); };
-        t.Start();
+        _updateTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
+        _updateTimer.Tick += async (_, _) =>
+        {
+            _updateTimer.Interval = TimeSpan.FromMinutes(30);
+            if (!_m.Settings.CheckForUpdates || DateTime.Now - _m.Settings.LastUpdateCheck < UpdateInterval) return;
+            await CheckForUpdatesAsync(silent: true);
+        };
+        _updateTimer.Start();
     }
 
     async Task CheckForUpdatesAsync(bool silent)
@@ -235,14 +248,47 @@ public partial class MainWindow : Window
                 if (!silent) Dialogs.Info(this, Loc.F("UpdNone", Updater.Current));
                 return;
             }
-            if (silent && info.Version.ToString() == _m.Settings.SkippedVersion) return;
-            new UpdateWindow(_m, info).Show();
+            if (!silent)
+            {
+                ShowUpdateWindow(info);
+                return;
+            }
+            OfferUpdate(info);
         }
         catch (Exception ex)
         {
             if (!silent) Dialogs.Info(this, Loc.F("UpdFailed", ex.Message), warning: true);
         }
     }
+
+    /// <summary>A new version was found in the background: banner in the window and a Windows notification.</summary>
+    void OfferUpdate(UpdateInfo info)
+    {
+        bool sameAsBefore = _available?.Version == info.Version;
+        _available = info;
+        bool skipped = info.Version.ToString() == _m.Settings.SkippedVersion;
+        if (skipped) return;
+
+        UpdateBannerText.Text = Loc.F("UpdBanner", info.Version);
+        UpdateBanner.Visibility = Visibility.Visible;
+        RebuildTrayMenu();
+        if (!sameAsBefore || !_updateNotified)
+        {
+            _updateNotified = true;
+            ShowBalloon(Loc.T("UpdNotifyTitle"), Loc.F("UpdNotifyText", info.Version), () => ShowUpdateWindow(info));
+        }
+    }
+
+    void ShowUpdateWindow(UpdateInfo info)
+    {
+        ShowFromTray();
+        new UpdateWindow(_m, info) { Owner = this }.ShowDialog();
+        // "Skip this version" hides the banner
+        if (info.Version.ToString() == _m.Settings.SkippedVersion) UpdateBanner.Visibility = Visibility.Collapsed;
+    }
+
+    void UpdateNow_Click(object sender, RoutedEventArgs e) { if (_available != null) ShowUpdateWindow(_available); }
+    void UpdateDismiss_Click(object sender, RoutedEventArgs e) => UpdateBanner.Visibility = Visibility.Collapsed;
 
     // ------------------------------------------------------------------ category tree and filter
 
@@ -657,6 +703,9 @@ public partial class MainWindow : Window
     {
         _tray = new WinForms.NotifyIcon { Icon = AppIcon.Icon, Text = "SwiftGet", Visible = true };
         _tray.DoubleClick += (_, _) => ShowFromTray();
+        // a notification can carry an action (e.g. "update available" opens the update window)
+        _tray.BalloonTipClicked += (_, _) => { var a = _balloonAction; _balloonAction = null; a?.Invoke(); };
+        _tray.BalloonTipClosed += (_, _) => _balloonAction = null;
         RebuildTrayMenu();
     }
 
@@ -667,6 +716,12 @@ public partial class MainWindow : Window
         {
             RightToLeft = Loc.I.IsRtl ? WinForms.RightToLeft.Yes : WinForms.RightToLeft.No
         };
+        if (_available is { } update && update.Version.ToString() != _m.Settings.SkippedVersion)
+        {
+            var item = menu.Items.Add(Loc.F("UpdTrayItem", update.Version), null, (_, _) => ShowUpdateWindow(update));
+            item.Font = new System.Drawing.Font(item.Font, System.Drawing.FontStyle.Bold);
+            menu.Items.Add(new WinForms.ToolStripSeparator());
+        }
         menu.Items.Add(Loc.T("TrayShow"), null, (_, _) => ShowFromTray());
         menu.Items.Add(Loc.T("TrayAdd"), null, (_, _) => { ShowFromTray(); AddUrl_Click(this, new RoutedEventArgs()); });
         menu.Items.Add(new WinForms.ToolStripSeparator());
@@ -690,8 +745,15 @@ public partial class MainWindow : Window
         Topmost = false;
     }
 
-    void ShowBalloon(string title, string text) =>
-        _tray?.ShowBalloonTip(4000, title, string.IsNullOrEmpty(text) ? " " : text, WinForms.ToolTipIcon.Info);
+    Action? _balloonAction;
+
+    void ShowBalloon(string title, string text) => ShowBalloon(title, text, null);
+
+    void ShowBalloon(string title, string text, Action? onClick)
+    {
+        _balloonAction = onClick;
+        _tray?.ShowBalloonTip(6000, title, string.IsNullOrEmpty(text) ? " " : text, WinForms.ToolTipIcon.Info);
+    }
 
     void ExitApp()
     {

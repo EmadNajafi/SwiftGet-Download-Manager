@@ -292,7 +292,7 @@ public static class Strings
         // updates
         ["UpdTitle"] = "Update", ["UpdAvailable"] = "SwiftGet {0} is available", ["UpdCurrent"] = "You have version {0}.",
         ["UpdInstall"] = "Install update", ["UpdOpenPage"] = "Open download page", ["UpdLater"] = "Later", ["UpdSkip"] = "Skip this version",
-        ["UpdNone"] = "You have the latest version ({0}).", ["UpdFailed"] = "Couldn't check for updates: {0}",
+        ["UpdNone"] = "You have the latest version ({0}).", ["UpdBanner"] = "A new version of SwiftGet ({0}) is available.", ["UpdNow"] = "Update now", ["UpdWhatsNew"] = "What's new", ["UpdNotifyTitle"] = "SwiftGet update available", ["UpdNotifyText"] = "Version {0} is ready. Click here to see what's new and install it.", ["UpdTrayItem"] = "Install update {0}", ["UpdFailed"] = "Couldn't check for updates: {0}",
 
         // link picker
         ["LinksFromPage"] = "Links on the page", ["LinksAddress"] = "Address",
@@ -625,7 +625,7 @@ public static class Strings
 
         ["UpdTitle"] = "به‌روزرسانی", ["UpdAvailable"] = "نسخهٔ {0} از SwiftGet آماده است", ["UpdCurrent"] = "نسخهٔ فعلی شما {0} است.",
         ["UpdInstall"] = "نصب به‌روزرسانی", ["UpdOpenPage"] = "باز کردن صفحهٔ دانلود", ["UpdLater"] = "بعداً", ["UpdSkip"] = "رد کردن این نسخه",
-        ["UpdNone"] = "آخرین نسخه را دارید ({0}).", ["UpdFailed"] = "بررسی نسخهٔ جدید ممکن نشد: {0}",
+        ["UpdNone"] = "آخرین نسخه را دارید ({0}).", ["UpdBanner"] = "نسخهٔ جدید SwiftGet ({0}) آماده است.", ["UpdNow"] = "به‌روزرسانی", ["UpdWhatsNew"] = "تغییرات", ["UpdNotifyTitle"] = "به‌روزرسانی SwiftGet", ["UpdNotifyText"] = "نسخهٔ {0} آماده است. برای دیدن تغییرات و نصب، اینجا کلیک کنید.", ["UpdTrayItem"] = "نصب به‌روزرسانی {0}", ["UpdFailed"] = "بررسی نسخهٔ جدید ممکن نشد: {0}",
 
         ["LinksFromPage"] = "لینک‌های صفحه", ["LinksAddress"] = "آدرس",
         ["LinksFilterHint"] = "فیلتر بر اساس نام، یا الگویی مثل *.mp4",

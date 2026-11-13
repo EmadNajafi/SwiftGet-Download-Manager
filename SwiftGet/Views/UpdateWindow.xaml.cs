@@ -17,10 +17,25 @@ public partial class UpdateWindow : Window
         _info = info;
         HeadText.Text = Loc.F("UpdAvailable", info.Version);
         SubText.Text = Loc.F("UpdCurrent", Updater.Current);
-        NotesBox.Text = string.IsNullOrWhiteSpace(info.Notes) ? info.PageUrl : info.Notes.Replace("\r\n", "\n").Replace("\n", Environment.NewLine);
+        NotesBox.Text = string.IsNullOrWhiteSpace(info.Notes) ? info.PageUrl : PlainText(info.Notes);
         bool canInstall = Updater.IsInstalled && info.SetupUrl != null;
         InstallButton.Content = Loc.T(canInstall ? "UpdInstall" : "UpdOpenPage");
         Closed += (_, _) => _cts?.Cancel();
+    }
+
+    /// <summary>Release notes are Markdown; show them as readable text.</summary>
+    static string PlainText(string markdown)
+    {
+        var lines = markdown.Replace("\r\n", "\n").Split('\n').Select(line =>
+        {
+            var l = System.Text.RegularExpressions.Regex.Replace(line, @"^#{1,6}\s*", "");
+            l = System.Text.RegularExpressions.Regex.Replace(l, @"^\s*[-*]\s+", "•  ");
+            l = System.Text.RegularExpressions.Regex.Replace(l, @"\*\*(.+?)\*\*", "$1");
+            l = System.Text.RegularExpressions.Regex.Replace(l, @"`([^`]+)`", "$1");
+            l = System.Text.RegularExpressions.Regex.Replace(l, @"\[([^\]]+)\]\([^)]+\)", "$1");
+            return l;
+        });
+        return string.Join(Environment.NewLine, lines).Trim();
     }
 
     async void Install_Click(object sender, RoutedEventArgs e)
