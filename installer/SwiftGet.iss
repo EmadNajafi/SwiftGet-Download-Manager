@@ -1,6 +1,6 @@
 ; SwiftGet installer — build with build.ps1, or: ISCC.exe /DAppVersion=1.0.0 installer\SwiftGet.iss
 #ifndef AppVersion
-  #define AppVersion "1.2.0"
+  #define AppVersion "1.2.1"
 #endif
 #define AppName "SwiftGet"
 #define AppExe "SwiftGet.exe"

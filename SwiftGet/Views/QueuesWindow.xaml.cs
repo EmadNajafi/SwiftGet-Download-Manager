@@ -70,6 +70,11 @@ public partial class QueuesWindow : Window
         };
     }
 
+    public void Select(DownloadQueue? queue)
+    {
+        if (queue != null) QueueList.SelectedItem = queue;
+    }
+
     // ------------------------------------------------------------------ load / save editor
 
     void QueueList_SelectionChanged(object sender, SelectionChangedEventArgs e)

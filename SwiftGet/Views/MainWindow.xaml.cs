@@ -40,6 +40,7 @@ public sealed class NavEntry : INotifyPropertyChanged
 
     public IEnumerable<NavEntry> SelfAndDescendants() => new[] { this }.Concat(Children.SelectMany(c => c.SelfAndDescendants()));
     public void RefreshTitle() => Raise(nameof(Title));
+    public override string ToString() => Title;   // read by screen readers
 
     void Raise(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -145,6 +146,68 @@ public partial class MainWindow : Window
 
     /// <summary>The queue the toolbar's queue buttons act on: the selected queue, otherwise the main queue.</summary>
     DownloadQueue TargetQueue => _selectedNav?.Queue ?? _m.MainQueue;
+
+    // ------------------------------------------------------------------ tree right-click menu
+
+    /// <summary>Right-click selects the node under the mouse first, like Explorer.</summary>
+    void NavTree_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        var d = e.OriginalSource as DependencyObject;
+        while (d != null && d is not TreeViewItem) d = VisualTreeHelper.GetParent(d);
+        if (d is TreeViewItem tvi)
+        {
+            tvi.IsSelected = true;
+            tvi.Focus();
+        }
+    }
+
+    void NavTree_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        NavMenu.Items.Clear();
+        var node = _selectedNav;
+        if (node?.Queue is { } q)
+        {
+            AddMenu(Loc.T("StartQueue"), "\uE768", () => _m.StartQueue(q), !q.IsRunning);
+            AddMenu(Loc.T("StopQueue"), "\uE71A", () => _m.StopQueue(q), q.IsRunning);
+            NavMenu.Items.Add(new Separator());
+            AddMenu(Loc.T("EditQueue"), "\uE70F", () => OpenScheduler(q));
+            AddMenu(Loc.T("DeleteQueue"), "\uE74D", () =>
+            {
+                if (Dialogs.Ask(this, Loc.F("ConfirmDeleteQueue", q.DisplayName))) _m.DeleteQueue(q);
+            }, !q.IsMain);
+            NavMenu.Items.Add(new Separator());
+            AddMenu(Loc.T("NewQueue"), "\uE710", NewQueue);
+        }
+        else if (node == _queuesNode)
+        {
+            AddMenu(Loc.T("NewQueue"), "\uE710", NewQueue);
+            AddMenu(Loc.T("Scheduler") + "…", "\uE787", () => OpenScheduler());
+        }
+        else
+        {
+            e.Handled = true;   // no menu for category folders
+        }
+    }
+
+    void AddMenu(string header, string glyph, Action action, bool enabled = true)
+    {
+        var mi = new MenuItem
+        {
+            Header = header,
+            IsEnabled = enabled,
+            Icon = new TextBlock { Text = glyph, Style = (Style)FindResource("Glyph"), FontSize = 14 },
+        };
+        mi.Click += (_, _) => { action(); UpdateStatus(); };
+        NavMenu.Items.Add(mi);
+    }
+
+    void NewQueue()
+    {
+        int n = 1;
+        while (_m.Queues.Any(x => x.Name == Loc.F("NewQueueName", n))) n++;
+        var q = _m.CreateQueue(Loc.F("NewQueueName", n));
+        OpenScheduler(q);
+    }
 
     IEnumerable<NavEntry> AllNav() => _roots.SelectMany(r => r.SelfAndDescendants());
 
@@ -280,7 +343,7 @@ public partial class MainWindow : Window
 
     public void OpenScheduler(DownloadQueue? queue = null)
     {
-        if (_scheduler != null) { _scheduler.Activate(); return; }
+        if (_scheduler != null) { _scheduler.Select(queue); _scheduler.Activate(); return; }
         _scheduler = new QueuesWindow(_m, queue) { Owner = IsVisible ? this : null };
         _scheduler.Closed += (_, _) => { _scheduler = null; UpdateStatus(); };
         _scheduler.Show();

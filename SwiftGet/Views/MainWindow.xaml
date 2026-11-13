@@ -264,7 +264,11 @@
             <!-- ============================ category tree ============================ -->
             <Border Background="{DynamicResource Surface}">
                 <TreeView x:Name="NavTree" BorderThickness="0" Background="Transparent" Padding="4,8"
-                          ItemTemplate="{StaticResource NavTemplate}" SelectedItemChanged="NavTree_SelectedItemChanged">
+                          ItemTemplate="{StaticResource NavTemplate}" SelectedItemChanged="NavTree_SelectedItemChanged"
+                          PreviewMouseRightButtonDown="NavTree_PreviewMouseRightButtonDown" ContextMenuOpening="NavTree_ContextMenuOpening">
+                    <TreeView.ContextMenu>
+                        <ContextMenu x:Name="NavMenu" FlowDirection="{Binding Flow, Source={x:Static l:Loc.I}}"/>
+                    </TreeView.ContextMenu>
                     <TreeView.ItemContainerStyle>
                         <Style TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
                             <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
