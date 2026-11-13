@@ -26,6 +26,7 @@ public sealed class AppSettings
     public bool ShowDialogForBrowser { get; set; } = true;
     public int BridgePort { get; set; } = 47321;
     public bool ShowCompleteDialog { get; set; } = true;
+    public bool ShowProgressWindow { get; set; } = true;
     public bool StartWithWindows { get; set; }
     /// <summary>"en", "fa", or empty for the Windows language.</summary>
     public string Language { get; set; } = "";

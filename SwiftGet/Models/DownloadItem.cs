@@ -162,6 +162,23 @@ public sealed class DownloadItem : INotifyPropertyChanged
         _ => StatusText
     };
 
+    /// <summary>"Status" column of the download table: percent while unfinished, otherwise the state.</summary>
+    [JsonIgnore]
+    public string GridStatusText => Status switch
+    {
+        DownloadStatus.Downloading or DownloadStatus.Paused when TotalSize > 0 && Downloaded > 0 => $"‎{Progress:0.00}%",
+        _ => StatusText
+    };
+
+    [JsonIgnore] public string GridEtaText => EtaText == "—" ? "" : EtaText;
+    [JsonIgnore] public string GridSpeedText => Status == DownloadStatus.Downloading ? Format.Speed(Speed) : "";
+
+    /// <summary>"Downloaded" line of the progress window, e.g. "221.6 MB (23.40%)".</summary>
+    [JsonIgnore]
+    public string DownloadedDetailText => TotalSize > 0
+        ? $"{Format.Size(Downloaded)}   ·   \u200E{Progress:0.00}%"
+        : Format.Size(Downloaded);
+
     /// <summary>Second line of each row.</summary>
     [JsonIgnore]
     public string SublineText
@@ -235,6 +252,7 @@ public sealed class DownloadItem : INotifyPropertyChanged
         nameof(Progress), nameof(SizeText), nameof(DownloadedText), nameof(SpeedText), nameof(DateAddedText),
         nameof(ProgressText), nameof(EtaText), nameof(StatusText), nameof(PillText), nameof(SublineText),
         nameof(PrimaryGlyph), nameof(PrimaryTip),
+        nameof(GridStatusText), nameof(GridEtaText), nameof(GridSpeedText), nameof(DownloadedDetailText),
     };
 
     public event PropertyChangedEventHandler? PropertyChanged;

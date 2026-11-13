@@ -62,6 +62,7 @@ public partial class SettingsWindow : Window
         StartupBox.IsChecked = Autostart.IsEnabled;
         ShowDialogBox.IsChecked = current.ShowDialogForBrowser;
         ShowCompleteBox.IsChecked = current.ShowCompleteDialog;
+        ShowProgressBox.IsChecked = current.ShowProgressWindow;
 
         // connections
         ConnectionsBox.ItemsSource = ConnectionChoices;
@@ -180,6 +181,7 @@ public partial class SettingsWindow : Window
             StartWithWindows = StartupBox.IsChecked == true,
             ShowDialogForBrowser = ShowDialogBox.IsChecked == true,
             ShowCompleteDialog = ShowCompleteBox.IsChecked == true,
+            ShowProgressWindow = ShowProgressBox.IsChecked == true,
             Connections = ConnectionsBox.SelectedItem is int c ? c : 8,
             MaxConcurrent = concurrent,
             MaxRetries = retries,

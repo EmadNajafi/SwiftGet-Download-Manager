@@ -14,7 +14,12 @@ public static class Format
         double v = bytes;
         int i = 0;
         while (v >= 1024 && i < units.Length - 1) { v /= 1024; i++; }
-        return Lrm + (i == 0 ? $"{bytes} B" : $"{v:0.##} {units[i]}");
+        if (i == 0) return Lrm + $"{bytes} B";
+        // three significant digits: 1.23 MB, 12.3 MB, 123 MB
+        var number = v >= 100 ? v.ToString("0", CultureInfo.InvariantCulture)
+                   : v >= 10 ? v.ToString("0.#", CultureInfo.InvariantCulture)
+                   : v.ToString("0.##", CultureInfo.InvariantCulture);
+        return Lrm + $"{number} {units[i]}";
     }
 
     public static string Speed(double bytesPerSecond) => Size((long)bytesPerSecond) + "/s";

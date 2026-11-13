@@ -16,6 +16,8 @@
 
 ![SwiftGet main window](docs/screenshot-light.png)
 
+<p align="center"><img src="docs/screenshot-progress.png" width="420" alt="Download progress window"></p>
+
 ## Features
 
 - **Multi-connection downloads** – each file is split into parts that download in parallel (8 connections by default, up to 32). When a connection finishes early it takes over half of the largest remaining part, so every connection stays busy until the end.

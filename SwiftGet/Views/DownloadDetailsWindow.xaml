@@ -3,153 +3,136 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:l="clr-namespace:SwiftGet.Core"
         xmlns:v="clr-namespace:SwiftGet.Views"
-        Width="660" Height="600" MinWidth="520" MinHeight="480"
+        Width="580" SizeToContent="Height" ResizeMode="CanMinimize"
         FlowDirection="{Binding Flow, Source={x:Static l:Loc.I}}"
         FontFamily="{StaticResource UiFont}" FontSize="13"
         Background="{DynamicResource Bg}" Foreground="{DynamicResource Text}"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
-        <Style x:Key="StatCard" TargetType="Border" BasedOn="{StaticResource Card}">
-            <Setter Property="Padding" Value="14,11"/>
-            <Setter Property="Margin" Value="0,0,8,0"/>
+        <Style x:Key="InfoLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+            <Setter Property="Margin" Value="0,4,18,4"/>
         </Style>
-        <Style x:Key="StatValue" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="15"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Margin" Value="0,4,0,0"/>
+        <Style x:Key="InfoValue" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,4"/>
             <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        </Style>
+        <!-- one continuous bar that fills smoothly -->
+        <Style x:Key="MainProgress" TargetType="ProgressBar">
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Maximum" Value="100"/>
+            <Setter Property="Foreground" Value="{DynamicResource Success}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Border BorderBrush="{DynamicResource Border}" BorderThickness="1" CornerRadius="4"
+                                Background="{DynamicResource Track}" Padding="1">
+                            <Grid ClipToBounds="True">
+                                <Border x:Name="PART_Track"/>
+                                <Border x:Name="PART_Indicator" HorizontalAlignment="Left" CornerRadius="3" Background="{TemplateBinding Foreground}">
+                                    <Border CornerRadius="3">
+                                        <Border.Background>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                <GradientStop Color="#40FFFFFF" Offset="0"/>
+                                                <GradientStop Color="#00FFFFFF" Offset="0.55"/>
+                                                <GradientStop Color="#18000000" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                    </Border>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
 
-    <DockPanel Margin="24,20,24,20">
-        <!-- header -->
-        <Grid DockPanel.Dock="Top">
+    <StackPanel Margin="18,16,18,16">
+        <!-- information -->
+        <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <Border Style="{StaticResource IconTile}" Width="48" Height="48" CornerRadius="12" Background="{Binding CategorySoftBrush}">
-                <TextBlock Style="{StaticResource Glyph}" Text="{Binding CategoryGlyph}" Foreground="{Binding CategoryBrush}"
-                           FontSize="21" HorizontalAlignment="Center"/>
-            </Border>
-            <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
-                <TextBlock Text="{Binding FileName, Mode=OneWay}" Style="{StaticResource H2}" FontSize="17" TextTrimming="CharacterEllipsis"/>
-                <TextBlock Text="{Binding StatusText, Mode=OneWay}" Style="{StaticResource Caption}" Margin="0,2,0,0"/>
-            </StackPanel>
+            <Grid.RowDefinitions>
+                <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" Text="{l:Tr PdUrl}" Style="{StaticResource InfoLabel}"/>
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Url, Mode=OneWay}" Style="{StaticResource InfoValue}"
+                       FlowDirection="LeftToRight" TextAlignment="Left" ToolTip="{Binding Url, Mode=OneWay}"/>
+            <TextBlock Grid.Row="1" Text="{l:Tr PdStatus}" Style="{StaticResource InfoLabel}"/>
+            <TextBlock Grid.Row="1" Grid.Column="1" x:Name="StatusValue" Style="{StaticResource InfoValue}" FontWeight="SemiBold"/>
+            <TextBlock Grid.Row="2" Text="{l:Tr PdFileSize}" Style="{StaticResource InfoLabel}"/>
+            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SizeText, Mode=OneWay}" Style="{StaticResource InfoValue}"/>
+            <TextBlock Grid.Row="3" Text="{l:Tr PdDownloaded}" Style="{StaticResource InfoLabel}"/>
+            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding DownloadedDetailText, Mode=OneWay}" Style="{StaticResource InfoValue}"/>
+            <TextBlock Grid.Row="4" Text="{l:Tr PdRate}" Style="{StaticResource InfoLabel}"/>
+            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SpeedText, Mode=OneWay}" Style="{StaticResource InfoValue}"/>
+            <TextBlock Grid.Row="5" Text="{l:Tr PdTimeLeft}" Style="{StaticResource InfoLabel}"/>
+            <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding EtaText, Mode=OneWay}" Style="{StaticResource InfoValue}"/>
+            <TextBlock Grid.Row="6" Text="{l:Tr PdResume}" Style="{StaticResource InfoLabel}"/>
+            <TextBlock Grid.Row="6" Grid.Column="1" x:Name="ResumeValue" Style="{StaticResource InfoValue}"/>
+        </Grid>
+
+        <!-- progress -->
+        <Grid Margin="0,14,0,0">
+            <ProgressBar x:Name="MainBar" Style="{StaticResource MainProgress}"/>
+            <TextBlock x:Name="PercentText" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"
+                       FontSize="12" FlowDirection="LeftToRight"/>
         </Grid>
 
         <!-- buttons -->
-        <DockPanel DockPanel.Dock="Bottom" Margin="0,16,0,0" LastChildFill="False">
+        <DockPanel Margin="0,14,0,0" LastChildFill="False">
+            <Button x:Name="DetailsButton" DockPanel.Dock="Left" Style="{StaticResource SecondaryButton}" MinWidth="140"
+                    Click="DetailsToggle_Click"/>
+            <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButton}" Content="{l:Tr Cancel}" IsCancel="True"
+                    Click="Cancel_Click" Margin="8,0,0,0"/>
             <Button x:Name="ToggleButton" DockPanel.Dock="Right" Style="{StaticResource AccentButton}" Click="Toggle_Click">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock x:Name="ToggleGlyph" Style="{StaticResource Glyph}" FontSize="13" Margin="0,0,8,0"/>
                     <TextBlock x:Name="ToggleText"/>
                 </StackPanel>
             </Button>
-            <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Click="OpenFolder_Click"
-                    Content="{l:Tr OpenFolder}"/>
-            <Button DockPanel.Dock="Left" Style="{StaticResource SecondaryButton}" IsCancel="True" Click="Close_Click"
-                    Content="{l:Tr Close}"/>
         </DockPanel>
 
-        <StackPanel DockPanel.Dock="Top">
-            <!-- progress -->
-            <Border Style="{StaticResource Card}" Margin="0,18,0,0" Padding="18,14">
-                <StackPanel>
-                    <DockPanel>
-                        <TextBlock x:Name="PercentText" FontSize="30" FontWeight="Bold" FlowDirection="LeftToRight"/>
-                        <TextBlock Text="{Binding ProgressText, Mode=OneWay}" Style="{StaticResource Caption}" FontSize="13"
-                                   VerticalAlignment="Bottom" Margin="12,0,0,6"/>
-                    </DockPanel>
-                    <v:SegmentBar x:Name="Bar" Height="12" Margin="0,10,0,4"/>
-                    <TextBlock Text="{Binding ErrorMessage, Mode=OneWay}" Foreground="{DynamicResource Danger}" TextWrapping="Wrap"
-                               Margin="0,6,0,0" x:Name="ErrorText"/>
-                </StackPanel>
+        <!-- connections (show / hide details) -->
+        <StackPanel x:Name="DetailsPanel" Margin="0,16,0,0">
+            <TextBlock Text="{l:Tr PdMapCaption}" Style="{StaticResource Caption}" Margin="0,0,0,6"/>
+            <v:SegmentBar x:Name="Bar" Height="10"/>
+            <Border Margin="0,10,0,0" BorderBrush="{DynamicResource Border}" BorderThickness="1" CornerRadius="4"
+                    Background="{DynamicResource Surface}">
+                <DockPanel>
+                    <Grid DockPanel.Dock="Top" Background="{DynamicResource SurfaceAlt}" Height="28">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="60"/>
+                            <ColumnDefinition Width="200"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{l:Tr ConnNo}" Style="{StaticResource Caption}" FontWeight="SemiBold" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="{l:Tr ConnDownloaded}" Style="{StaticResource Caption}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Text="{l:Tr ConnInfo}" Style="{StaticResource Caption}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </Grid>
+                    <ScrollViewer Height="150" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="PartList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Height="25">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="60"/>
+                                            <ColumnDefinition Width="200"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Number}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding SizeText}" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding State}" Foreground="{Binding StateBrush}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
             </Border>
-
-            <!-- stats -->
-            <UniformGrid Columns="4" Margin="0,10,-8,0">
-                <Border Style="{StaticResource StatCard}">
-                    <StackPanel>
-                        <TextBlock Text="{l:Tr DetDownloaded}" Style="{StaticResource Caption}"/>
-                        <TextBlock Text="{Binding DownloadedText, Mode=OneWay}" Style="{StaticResource StatValue}"/>
-                    </StackPanel>
-                </Border>
-                <Border Style="{StaticResource StatCard}">
-                    <StackPanel>
-                        <TextBlock Text="{l:Tr DetSpeed}" Style="{StaticResource Caption}"/>
-                        <TextBlock Text="{Binding SpeedText, Mode=OneWay}" Style="{StaticResource StatValue}"/>
-                    </StackPanel>
-                </Border>
-                <Border Style="{StaticResource StatCard}">
-                    <StackPanel>
-                        <TextBlock Text="{l:Tr DetTimeLeft}" Style="{StaticResource Caption}"/>
-                        <TextBlock Text="{Binding EtaText, Mode=OneWay}" Style="{StaticResource StatValue}"/>
-                    </StackPanel>
-                </Border>
-                <Border Style="{StaticResource StatCard}">
-                    <StackPanel>
-                        <TextBlock Text="{l:Tr DetConnections}" Style="{StaticResource Caption}"/>
-                        <TextBlock Text="{Binding ActiveConnections, Mode=OneWay}" Style="{StaticResource StatValue}"/>
-                    </StackPanel>
-                </Border>
-            </UniformGrid>
-
-            <!-- address / path -->
-            <Border Style="{StaticResource Card}" Margin="0,10,0,0" Padding="16,10">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition/>
-                        <RowDefinition/>
-                    </Grid.RowDefinitions>
-                    <TextBlock Text="{l:Tr DetAddress}" Style="{StaticResource Caption}" Margin="0,3,16,3"/>
-                    <TextBlock Grid.Column="1" Text="{Binding Url, Mode=OneWay}" TextTrimming="CharacterEllipsis" Margin="0,3"
-                               FlowDirection="LeftToRight" ToolTip="{Binding Url, Mode=OneWay}"/>
-                    <TextBlock Grid.Row="1" Text="{l:Tr DetSavedTo}" Style="{StaticResource Caption}" Margin="0,3,16,3"/>
-                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding FullPath, Mode=OneWay}" TextTrimming="CharacterEllipsis"
-                               Margin="0,3" FlowDirection="LeftToRight" ToolTip="{Binding FullPath, Mode=OneWay}"/>
-                </Grid>
-            </Border>
-
-            <TextBlock Text="{l:Tr DetParts}" Style="{StaticResource FieldLabel}" Margin="2,14,0,6"/>
         </StackPanel>
-
-        <!-- parts -->
-        <Border Style="{StaticResource Card}" Padding="6">
-            <ListBox x:Name="PartList" Style="{StaticResource PlainList}">
-                <ListBox.ItemContainerStyle>
-                    <Style TargetType="ListBoxItem">
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="ListBoxItem">
-                                    <ContentPresenter Margin="10,5"/>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-                </ListBox.ItemContainerStyle>
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="70"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="150"/>
-                                <ColumnDefinition Width="100"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
-                            <ProgressBar Grid.Column="1" Style="{StaticResource ThinProgress}" Value="{Binding Percent, Mode=OneWay}"
-                                         VerticalAlignment="Center" Margin="0,0,14,0"/>
-                            <TextBlock Grid.Column="2" Text="{Binding SizeText}" Style="{StaticResource Caption}"/>
-                            <TextBlock Grid.Column="3" Text="{Binding State}" Style="{StaticResource Caption}" Foreground="{Binding StateBrush}"/>
-                        </Grid>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
-        </Border>
-    </DockPanel>
+    </StackPanel>
 </Window>

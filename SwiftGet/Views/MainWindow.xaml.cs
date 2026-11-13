@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -11,32 +12,34 @@ using WinForms = System.Windows.Forms;
 
 namespace SwiftGet.Views;
 
-/// <summary>An entry in the sidebar: a section header or a filter.</summary>
+/// <summary>A node in the category tree.</summary>
 public sealed class NavEntry : INotifyPropertyChanged
 {
     int _count;
+    bool _expanded = true, _selected;
 
     public string TitleKey { get; init; } = "";
-    public string Glyph { get; init; } = "";
+    public string Glyph { get; init; } = "";
     public Brush? GlyphBrush { get; init; }
-    public bool IsHeader { get; init; }
     public Func<DownloadItem, bool> Match { get; init; } = _ => true;
+    public ObservableCollection<NavEntry> Children { get; } = new();
 
     public string Title => Loc.T(TitleKey);
-    public string CountText => IsHeader || _count == 0 ? "" : _count.ToString();
+    public string CountText => _count == 0 ? "" : $"({_count})";
 
     public int Count
     {
         get => _count;
-        set
-        {
-            if (_count == value) return;
-            _count = value;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CountText)));
-        }
+        set { if (_count != value) { _count = value; Raise(nameof(CountText)); } }
     }
 
-    public void RefreshTitle() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Title)));
+    public bool IsExpanded { get => _expanded; set { _expanded = value; Raise(nameof(IsExpanded)); } }
+    public bool IsSelected { get => _selected; set { _selected = value; Raise(nameof(IsSelected)); } }
+
+    public IEnumerable<NavEntry> SelfAndDescendants() => new[] { this }.Concat(Children.SelectMany(c => c.SelfAndDescendants()));
+    public void RefreshTitle() => Raise(nameof(Title));
+
+    void Raise(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     public event PropertyChangedEventHandler? PropertyChanged;
 }
 
@@ -44,8 +47,9 @@ public partial class MainWindow : Window
 {
     readonly DownloadManager _m;
     readonly ListCollectionView _view;
-    readonly List<NavEntry> _nav = new();
+    readonly List<NavEntry> _roots = new();
     readonly Dictionary<Guid, DownloadDetailsWindow> _details = new();
+    NavEntry? _selectedNav;
     WinForms.NotifyIcon? _tray;
     bool _exiting, _trayHintShown, _bridgeOk;
     string _search = "";
@@ -55,18 +59,18 @@ public partial class MainWindow : Window
         InitializeComponent();
         _m = manager;
         Icon = AppIcon.ImageSource;
-        LogoImage.Source = AppIcon.LargeImageSource;
 
-        _view = new ListCollectionView(_m.Items) { IsLiveFiltering = true, IsLiveSorting = true };
+        _view = new ListCollectionView(_m.Items) { IsLiveFiltering = true };
         foreach (var p in new[] { nameof(DownloadItem.Status), nameof(DownloadItem.InQueue), nameof(DownloadItem.Category), nameof(DownloadItem.FileName) })
             _view.LiveFilteringProperties.Add(p);
+        _view.SortDescriptions.Add(new SortDescription(nameof(DownloadItem.DateAdded), ListSortDirection.Descending));
         _view.Filter = Filter;
-        DownloadList.ItemsSource = _view;
+        DownloadGrid.ItemsSource = _view;
 
         BuildNav();
-        BuildSortBox();
 
         _m.ItemCompleted += OnItemCompleted;
+        _m.ProgressRequested += ShowDetails;
         _m.Notify += ShowBalloon;
         _m.QueueStateChanged += UpdateStatus;
         _m.Items.CollectionChanged += (_, _) => UpdateStatus();
@@ -81,42 +85,47 @@ public partial class MainWindow : Window
         UpdateStatus();
     }
 
-    // ------------------------------------------------------------------ sidebar, sort, filter
+    // ------------------------------------------------------------------ category tree and filter
+
+    NavEntry CategoryNode(CategoryInfo c, Func<DownloadItem, bool> parent)
+    {
+        var key = c.Key;
+        return new NavEntry { TitleKey = "Cat" + key, Glyph = c.Glyph, GlyphBrush = c.Brush, Match = i => parent(i) && i.Category == key };
+    }
 
     void BuildNav()
     {
-        _nav.Add(new NavEntry { TitleKey = "NavStatus", IsHeader = true });
-        _nav.Add(new NavEntry { TitleKey = "NavAll", Glyph = "" });
-        _nav.Add(new NavEntry { TitleKey = "NavActive", Glyph = "", Match = i => i.IsRunning });
-        _nav.Add(new NavEntry { TitleKey = "NavUnfinished", Glyph = "", Match = i => i.Status != DownloadStatus.Completed });
-        _nav.Add(new NavEntry { TitleKey = "NavFinished", Glyph = "", Match = i => i.Status == DownloadStatus.Completed });
-        _nav.Add(new NavEntry { TitleKey = "NavQueue", Glyph = "", Match = i => i.InQueue });
-        _nav.Add(new NavEntry { TitleKey = "NavCategories", IsHeader = true });
-        foreach (var c in Categories.All)
-        {
-            var key = c.Key;
-            _nav.Add(new NavEntry { TitleKey = "Cat" + key, Glyph = c.Glyph, GlyphBrush = c.Brush, Match = i => i.Category == key });
-        }
-        NavList.ItemsSource = _nav;
-        NavList.SelectedIndex = 1;
+        var all = new NavEntry { TitleKey = "NavAll", Glyph = "" };
+        foreach (var c in Categories.All) all.Children.Add(CategoryNode(c, _ => true));
+
+        Func<DownloadItem, bool> unfinished = i => i.Status != DownloadStatus.Completed;
+        var unfinishedNode = new NavEntry { TitleKey = "NavUnfinished", Glyph = "", Match = unfinished, IsExpanded = false };
+        foreach (var c in Categories.All) unfinishedNode.Children.Add(CategoryNode(c, unfinished));
+
+        Func<DownloadItem, bool> finished = i => i.Status == DownloadStatus.Completed;
+        var finishedNode = new NavEntry { TitleKey = "NavFinished", Glyph = "", Match = finished, IsExpanded = false };
+        foreach (var c in Categories.All) finishedNode.Children.Add(CategoryNode(c, finished));
+
+        var queueNode = new NavEntry { TitleKey = "NavQueue", Glyph = "", GlyphBrush = (Brush)FindResource("Accent"), Match = i => i.InQueue };
+
+        _roots.AddRange(new[] { all, unfinishedNode, finishedNode, queueNode });
+        NavTree.ItemsSource = _roots;
+        all.IsSelected = true;
+        _selectedNav = all;
     }
 
-    void BuildSortBox()
-    {
-        int index = Math.Max(0, SortBox.SelectedIndex);
-        SortBox.ItemsSource = new[] { Loc.T("SortNewest"), Loc.T("SortName"), Loc.T("SortSize") };
-        SortBox.SelectedIndex = index;
-    }
+    IEnumerable<NavEntry> AllNav() => _roots.SelectMany(r => r.SelfAndDescendants());
 
     bool Filter(object o)
     {
         var item = (DownloadItem)o;
-        if (NavList.SelectedItem is NavEntry nav && !nav.Match(item)) return false;
+        if (_selectedNav != null && !_selectedNav.Match(item)) return false;
         return _search.Length == 0 || item.FileName.Contains(_search, StringComparison.OrdinalIgnoreCase);
     }
 
-    void NavList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    void NavTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
     {
+        _selectedNav = e.NewValue as NavEntry;
         _view.Refresh();
         UpdateStatus();
     }
@@ -129,28 +138,9 @@ public partial class MainWindow : Window
         UpdateStatus();
     }
 
-    void SortBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_view == null) return;
-        using (_view.DeferRefresh())
-        {
-            _view.SortDescriptions.Clear();
-            _view.LiveSortingProperties.Clear();
-            var (prop, dir) = SortBox.SelectedIndex switch
-            {
-                1 => (nameof(DownloadItem.FileName), ListSortDirection.Ascending),
-                2 => (nameof(DownloadItem.TotalSize), ListSortDirection.Descending),
-                _ => (nameof(DownloadItem.DateAdded), ListSortDirection.Descending),
-            };
-            _view.SortDescriptions.Add(new SortDescription(prop, dir));
-            _view.LiveSortingProperties.Add(prop);
-        }
-    }
-
     void OnLanguageChanged()
     {
-        foreach (var n in _nav) n.RefreshTitle();
-        BuildSortBox();
+        foreach (var n in AllNav()) n.RefreshTitle();
         RebuildTrayMenu();
         UpdateStatus();
     }
@@ -165,19 +155,13 @@ public partial class MainWindow : Window
 
     void UpdateStatus()
     {
-        foreach (var n in _nav.Where(n => !n.IsHeader))
-            n.Count = _m.Items.Count(n.Match);
-
-        var nav = NavList.SelectedItem as NavEntry;
-        PageTitle.Text = nav?.Title ?? "";
-        var shown = _view.Count;
-        PageCount.Text = Loc.F("ItemsCount", shown);
-        EmptyState.Visibility = shown == 0 ? Visibility.Visible : Visibility.Collapsed;
+        foreach (var n in AllNav()) n.Count = _m.Items.Count(n.Match);
 
         SpeedStatus.Text = $"{Loc.T("TotalSpeed")}: {Format.Speed(_m.TotalSpeed)}";
         ActiveStatus.Text = Loc.F("ActiveDownloads", _m.ActiveCount);
         QueueStatus.Text = _m.QueueRunning ? Loc.T("QueueRunning") : Loc.T("QueueStopped");
         QueueDot.Fill = (Brush)FindResource(_m.QueueRunning ? "Success" : "TextTertiary");
+        CountStatus.Text = Loc.F("ItemsCount", _view.Count);
         StartQueueButton.IsEnabled = !_m.QueueRunning;
         StopQueueButton.IsEnabled = _m.QueueRunning;
 
@@ -205,20 +189,21 @@ public partial class MainWindow : Window
         {
             var item = _m.CreateItem(r.Url, r.FileName, r.Referrer, r.Cookies, r.UserAgent);
             _m.Add(item);
-            _m.Start(item);
-            ShowBalloon(Loc.T("NotifyNew"), item.FileName);
+            _m.StartWithProgress(item);
+            if (!_m.Settings.ShowProgressWindow) ShowBalloon(Loc.T("NotifyNew"), item.FileName);
         }
     }
 
     void OnItemCompleted(DownloadItem item)
     {
+        if (_details.TryGetValue(item.Id, out var progress)) progress.Close();
         if (_m.Settings.ShowCompleteDialog) new CompleteWindow(item).Show();
         else ShowBalloon(Loc.T("NotifyComplete"), item.FileName);
     }
 
     // ------------------------------------------------------------------ commands
 
-    List<DownloadItem> Selected() => DownloadList.SelectedItems.Cast<DownloadItem>().ToList();
+    List<DownloadItem> Selected() => DownloadGrid.SelectedItems.Cast<DownloadItem>().ToList();
 
     void AddUrl_Click(object sender, RoutedEventArgs e)
     {
@@ -233,7 +218,16 @@ public partial class MainWindow : Window
         new AddDownloadWindow(_m, url) { Owner = IsVisible ? this : null }.Show();
     }
 
-    void Resume_Click(object sender, RoutedEventArgs e) { foreach (var i in Selected()) _m.Start(i); }
+    void Resume_Click(object sender, RoutedEventArgs e)
+    {
+        var items = Selected();
+        foreach (var i in items)
+        {
+            if (items.Count == 1) _m.StartWithProgress(i);
+            else _m.Start(i);
+        }
+    }
+
     void Pause_Click(object sender, RoutedEventArgs e) { foreach (var i in Selected()) _m.Pause(i); }
     void PauseAll_Click(object sender, RoutedEventArgs e) => _m.PauseAll();
     void StartQueue_Click(object sender, RoutedEventArgs e) => _m.StartQueue();
@@ -280,60 +274,37 @@ public partial class MainWindow : Window
 
     void OpenFile_Click(object sender, RoutedEventArgs e)
     {
-        if (DownloadList.SelectedItem is DownloadItem i) Shell.OpenFile(i.FullPath);
+        if (DownloadGrid.SelectedItem is DownloadItem i) Shell.OpenFile(i.FullPath);
     }
 
     void OpenFolder_Click(object sender, RoutedEventArgs e)
     {
-        if (DownloadList.SelectedItem is DownloadItem i) Shell.ShowInFolder(i.FullPath, i.SaveFolder);
+        if (DownloadGrid.SelectedItem is DownloadItem i) Shell.ShowInFolder(i.FullPath, i.SaveFolder);
     }
 
     void Details_Click(object sender, RoutedEventArgs e)
     {
-        if (DownloadList.SelectedItem is DownloadItem i) ShowDetails(i);
+        if (DownloadGrid.SelectedItem is DownloadItem i) ShowDetails(i);
     }
 
-    // row buttons
-    static DownloadItem? RowItem(object sender) => (sender as FrameworkElement)?.DataContext as DownloadItem;
-
-    void RowPrimary_Click(object sender, RoutedEventArgs e)
+    void DownloadGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (RowItem(sender) is not { } i) return;
-        if (_m.IsRunning(i)) _m.Pause(i);
-        else if (i.Status == DownloadStatus.Completed) Shell.OpenFile(i.FullPath);
-        else _m.Start(i);
-    }
-
-    void RowFolder_Click(object sender, RoutedEventArgs e)
-    {
-        if (RowItem(sender) is { } i) Shell.ShowInFolder(i.FullPath, i.SaveFolder);
-    }
-
-    void RowDetails_Click(object sender, RoutedEventArgs e)
-    {
-        if (RowItem(sender) is { } i) ShowDetails(i);
-    }
-
-    void DownloadList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-    {
-        if (e.OriginalSource is DependencyObject d && FindParent<Button>(d) != null) return;
-        if (ItemsControl.ContainerFromElement(DownloadList, e.OriginalSource as DependencyObject) is not ListViewItem row ||
-            row.DataContext is not DownloadItem item) return;
+        if (ItemsControl.ContainerFromElement(DownloadGrid, e.OriginalSource as DependencyObject) is not DataGridRow row ||
+            row.Item is not DownloadItem item) return;
         if (item.Status == DownloadStatus.Completed && File.Exists(item.FullPath)) Shell.OpenFile(item.FullPath);
         else ShowDetails(item);
-    }
-
-    static T? FindParent<T>(DependencyObject d) where T : DependencyObject
-    {
-        while (d != null && d is not T) d = VisualTreeHelper.GetParent(d);
-        return d as T;
     }
 
     void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.N && Keyboard.Modifiers == ModifierKeys.Control) { AddUrl_Click(this, e); e.Handled = true; }
         else if (e.Key == Key.F && Keyboard.Modifiers == ModifierKeys.Control) { SearchBox.Focus(); e.Handled = true; }
-        else if (e.Key == Key.Delete && DownloadList.IsKeyboardFocusWithin) { Delete_Click(this, e); e.Handled = true; }
+        else if (e.Key == Key.Delete && DownloadGrid.IsKeyboardFocusWithin) { Delete_Click(this, e); e.Handled = true; }
+        else if (e.Key == Key.Enter && DownloadGrid.IsKeyboardFocusWithin && DownloadGrid.SelectedItem is DownloadItem i)
+        {
+            ShowDetails(i);
+            e.Handled = true;
+        }
     }
 
     public void OpenSettings(int page)
@@ -349,7 +320,7 @@ public partial class MainWindow : Window
         if (langChanged) Loc.I.SetLanguage(s.Language);
     }
 
-    void ShowDetails(DownloadItem item)
+    public void ShowDetails(DownloadItem item)
     {
         if (_details.TryGetValue(item.Id, out var existing))
         {

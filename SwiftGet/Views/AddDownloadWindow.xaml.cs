@@ -186,7 +186,7 @@ public partial class AddDownloadWindow : Window
         if (startNow)
         {
             _m.Add(item);
-            _m.Start(item);
+            _m.StartWithProgress(item);
         }
         else
         {

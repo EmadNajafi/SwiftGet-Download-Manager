@@ -95,6 +95,16 @@ public sealed class DownloadManager
         engine.Start();
     }
 
+    /// <summary>Raised for downloads the user starts by hand, so the UI can show the progress window.</summary>
+    public event Action<DownloadItem>? ProgressRequested;
+
+    public void StartWithProgress(DownloadItem item)
+    {
+        if (item.Status == DownloadStatus.Completed) return;
+        Start(item);
+        if (Settings.ShowProgressWindow) ProgressRequested?.Invoke(item);
+    }
+
     public void Pause(DownloadItem item)
     {
         _userPaused.Add(item.Id);

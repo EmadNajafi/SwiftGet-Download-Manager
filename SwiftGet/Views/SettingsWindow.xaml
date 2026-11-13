@@ -82,6 +82,7 @@
                             <StackPanel>
                                 <CheckBox x:Name="StartupBox" Style="{StaticResource Check}" Content="{l:Tr SetStartWithWindows}"/>
                                 <CheckBox x:Name="ShowDialogBox" Style="{StaticResource Check}" Content="{l:Tr SetShowBrowserDialog}"/>
+                                <CheckBox x:Name="ShowProgressBox" Style="{StaticResource Check}" Content="{l:Tr SetShowProgress}"/>
                                 <CheckBox x:Name="ShowCompleteBox" Style="{StaticResource Check}" Content="{l:Tr SetShowComplete}"/>
                             </StackPanel>
                         </Border>
