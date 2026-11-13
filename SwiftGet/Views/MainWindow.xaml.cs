@@ -340,8 +340,17 @@ public partial class MainWindow : Window
             };
             _queuesNode.Children.Add(node);
             if (queue == selectedQueue) node.IsSelected = true;
+            queue.PropertyChanged -= OnQueueChanged;
+            queue.PropertyChanged += OnQueueChanged;
         }
         UpdateStatus();
+    }
+
+    void OnQueueChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(DownloadQueue.DisplayName) or nameof(DownloadQueue.IsRunning))
+            foreach (var n in _queuesNode?.Children ?? new()) n.RefreshTitle();
+        if (e.PropertyName == nameof(DownloadQueue.IsRunning)) UpdateStatus();
     }
 
     /// <summary>The queue the toolbar's queue buttons act on: the selected queue, otherwise the main queue.</summary>
@@ -466,9 +475,11 @@ public partial class MainWindow : Window
         QueueDot.Fill = (Brush)FindResource(running > 0 ? "Success" : "TextTertiary");
         CountStatus.Text = Loc.F("ItemsCount", _view.Count);
         var target = TargetQueue;
-        StartQueueButton.IsEnabled = !target.IsRunning;
-        StopQueueButton.IsEnabled = target.IsRunning;
-        StartQueueButton.ToolTip = StopQueueButton.ToolTip = target.DisplayName;
+        bool several = _m.Queues.Count > 1;
+        StartQueueButton.IsEnabled = _m.Queues.Any(q => !q.IsRunning);
+        StopQueueButton.IsEnabled = _m.Queues.Any(q => q.IsRunning);
+        StartQueueArrow.Visibility = StopQueueArrow.Visibility = several ? Visibility.Visible : Visibility.Collapsed;
+        StartQueueButton.ToolTip = several ? null : _m.MainQueue.DisplayName;
 
         var seen = BrowserBridge.LastExtensionContact;
         bool extension = seen != null && DateTime.Now - seen.Value < TimeSpan.FromMinutes(3);
@@ -566,8 +577,66 @@ public partial class MainWindow : Window
 
     void Pause_Click(object sender, RoutedEventArgs e) { foreach (var i in Selected()) _m.Pause(i); }
     void PauseAll_Click(object sender, RoutedEventArgs e) => _m.PauseAll();
-    void StartQueue_Click(object sender, RoutedEventArgs e) => _m.StartQueue(TargetQueue);
-    void StopQueue_Click(object sender, RoutedEventArgs e) => _m.StopQueue(TargetQueue);
+    // ------------------------------------------------------------------ start / stop queue lists
+
+    /// <summary>With one queue the button acts directly; with several it shows the list to choose from.</summary>
+    void StartQueue_Click(object sender, RoutedEventArgs e)
+    {
+        if (_m.Queues.Count == 1) { _m.StartQueue(_m.MainQueue); return; }
+        ShowQueueMenu((FrameworkElement)sender, BuildQueueItems(start: true));
+    }
+
+    void StopQueue_Click(object sender, RoutedEventArgs e)
+    {
+        var running = _m.Queues.Where(q => q.IsRunning).ToList();
+        if (running.Count == 1) { _m.StopQueue(running[0]); return; }
+        ShowQueueMenu((FrameworkElement)sender, BuildQueueItems(start: false));
+    }
+
+    void ShowQueueMenu(FrameworkElement anchor, List<object> items)
+    {
+        var menu = new ContextMenu { PlacementTarget = anchor, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom, FlowDirection = Loc.I.Flow };
+        foreach (var i in items) menu.Items.Add(i);
+        menu.IsOpen = true;
+    }
+
+    void QueueMenu_Opened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem parent || e.OriginalSource != parent) return;
+        parent.Items.Clear();
+        foreach (var i in BuildQueueItems(start: parent == StartQueueMenu)) parent.Items.Add(i);
+    }
+
+    /// <summary>One entry per queue (with its number of files), plus "all queues".</summary>
+    List<object> BuildQueueItems(bool start)
+    {
+        var items = new List<object>();
+        foreach (var q in _m.Queues)
+        {
+            var queue = q;
+            int files = _m.ItemsOf(q).Count(i => i.Status != DownloadStatus.Completed);
+            var mi = new MenuItem
+            {
+                Header = $"{q.DisplayName}   ({Loc.F("QFilesCount", files)})",
+                IsEnabled = start ? !q.IsRunning : q.IsRunning,
+                IsChecked = q.IsRunning,
+            };
+            mi.Click += (_, _) => { if (start) _m.StartQueue(queue); else _m.StopQueue(queue); UpdateStatus(); };
+            items.Add(mi);
+        }
+        items.Add(new Separator());
+        var all = new MenuItem { Header = Loc.T(start ? "StartAllQueues" : "StopAllQueues") };
+        all.IsEnabled = start ? _m.Queues.Any(q => !q.IsRunning) : _m.Queues.Any(q => q.IsRunning);
+        all.Click += (_, _) =>
+        {
+            foreach (var q in _m.Queues.ToList())
+                if (start && !q.IsRunning) _m.StartQueue(q);
+                else if (!start && q.IsRunning) _m.StopQueue(q);
+            UpdateStatus();
+        };
+        items.Add(all);
+        return items;
+    }
     void Schedule_Click(object sender, RoutedEventArgs e) => OpenScheduler(_selectedNav?.Queue);
 
     QueuesWindow? _scheduler;

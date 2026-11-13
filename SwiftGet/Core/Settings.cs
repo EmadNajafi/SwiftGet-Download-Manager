@@ -30,6 +30,8 @@ public sealed class AppSettings
     public bool StartWithWindows { get; set; } = true;
     /// <summary>Set once the first-run "start with Windows" default has been applied.</summary>
     public bool AutostartInitialized { get; set; }
+    /// <summary>Set once queues from 2.0.0–2.0.2 (2–3 files at a time) were switched to one file at a time.</summary>
+    public bool QueuesOneByOne { get; set; }
     /// <summary>"en", "fa", or empty for the Windows language.</summary>
     public string Language { get; set; } = "";
     /// <summary>"System", "Light" or "Dark".</summary>

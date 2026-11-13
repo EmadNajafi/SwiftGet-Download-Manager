@@ -150,6 +150,14 @@ public partial class QueuesWindow : Window
         UpdateEnabled();
     }
 
+    /// <summary>The queue list and the main window show the new name while you type.</summary>
+    void Name_Changed(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        if (_loading || _current is not { IsMain: false } q || string.IsNullOrWhiteSpace(NameBox.Text)) return;
+        q.Name = NameBox.Text.Trim();
+        _m.SaveQueues();
+    }
+
     void UpdateEnabled()
     {
         bool start = StartEnabledBox.IsChecked == true;

@@ -46,6 +46,14 @@ public sealed class DownloadManager
         Http.Configure(Settings);
 
         LoadQueues();
+        if (!Settings.QueuesOneByOne)
+        {
+            // earlier versions started queues with 2–3 files at once; the expected behaviour is one after another
+            foreach (var q in Queues) q.MaxConcurrent = 1;
+            Settings.QueuesOneByOne = true;
+            SaveQueues();
+            Storage.Save(SettingsFile, Settings);
+        }
 
         foreach (var item in Storage.Load<List<DownloadItem>>(ItemsFile) ?? new())
         {
@@ -89,7 +97,7 @@ public sealed class DownloadManager
             {
                 Id = DownloadQueue.MainId,
                 Name = "Main queue",
-                MaxConcurrent = Math.Clamp(Settings.MaxConcurrent, 1, 20),
+                MaxConcurrent = 1,
                 StartEnabled = s.StartEnabled,
                 StartTime = s.StartTime,
                 StopEnabled = s.StopEnabled,

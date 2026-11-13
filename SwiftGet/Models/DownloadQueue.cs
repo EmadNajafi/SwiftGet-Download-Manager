@@ -20,7 +20,8 @@ public sealed class DownloadQueue : INotifyPropertyChanged
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get => _name; set { _name = value; Raise(); Raise(nameof(DisplayName)); } }
 
-    public int MaxConcurrent { get; set; } = 2;
+    /// <summary>Files downloaded at the same time; 1 = one after another (like IDM).</summary>
+    public int MaxConcurrent { get; set; } = 1;
     public bool StartOnLaunch { get; set; }
 
     public bool StartEnabled { get; set; }

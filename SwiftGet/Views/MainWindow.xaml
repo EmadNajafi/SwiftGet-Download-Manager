@@ -184,6 +184,14 @@
                     <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE74D;" FontSize="14"/></MenuItem.Icon>
                 </MenuItem>
                 <Separator/>
+                <MenuItem x:Name="StartQueueMenu" Header="{l:Tr StartQueue}" SubmenuOpened="QueueMenu_Opened">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE768;" FontSize="14"/></MenuItem.Icon>
+                    <MenuItem Header="…"/>
+                </MenuItem>
+                <MenuItem x:Name="StopQueueMenu" Header="{l:Tr StopQueue}" SubmenuOpened="QueueMenu_Opened">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE71A;" FontSize="14"/></MenuItem.Icon>
+                    <MenuItem Header="…"/>
+                </MenuItem>
                 <MenuItem Header="{l:Tr Scheduler}" Click="Schedule_Click">
                     <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE787;" FontSize="14"/></MenuItem.Icon>
                 </MenuItem>
@@ -269,13 +277,19 @@
                     <Button x:Name="StartQueueButton" Style="{StaticResource BigTool}" Click="StartQueue_Click">
                         <StackPanel>
                             <TextBlock Style="{StaticResource BigGlyph}" Text="&#xE8FD;" Foreground="{DynamicResource Accent}"/>
-                            <TextBlock Style="{StaticResource BigLabel}" Text="{l:Tr StartQueue}"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Style="{StaticResource BigLabel}" Text="{l:Tr StartQueue}"/>
+                                <TextBlock x:Name="StartQueueArrow" Style="{StaticResource Glyph}" Text="&#xE70D;" FontSize="8" Margin="4,1,0,0"/>
+                            </StackPanel>
                         </StackPanel>
                     </Button>
                     <Button x:Name="StopQueueButton" Style="{StaticResource BigTool}" Click="StopQueue_Click">
                         <StackPanel>
                             <TextBlock Style="{StaticResource BigGlyph}" Text="&#xE15B;" Foreground="{DynamicResource Accent}"/>
-                            <TextBlock Style="{StaticResource BigLabel}" Text="{l:Tr StopQueue}"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Style="{StaticResource BigLabel}" Text="{l:Tr StopQueue}"/>
+                                <TextBlock x:Name="StopQueueArrow" Style="{StaticResource Glyph}" Text="&#xE70D;" FontSize="8" Margin="4,1,0,0"/>
+                            </StackPanel>
                         </StackPanel>
                     </Button>
                     <Button Style="{StaticResource BigTool}" Click="Schedule_Click">
