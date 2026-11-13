@@ -72,19 +72,38 @@
             </Setter>
         </Style>
 
+        <!-- full row template so the Windows 11 theme can't recolor (or dim) row text -->
         <Style x:Key="GridRow" TargetType="DataGridRow">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{DynamicResource Text}"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource SurfaceHover}"/>
-                </Trigger>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource AccentSoft}"/>
-                </Trigger>
-            </Style.Triggers>
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridRow">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" SnapsToDevicePixels="True"
+                                BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1">
+                            <DataGridCellsPresenter ItemsPanel="{TemplateBinding ItemsPanel}"
+                                                    SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource SurfaceHover}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentSoft}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
+        <Style x:Key="CellText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        </Style>
         <Style x:Key="GridHeader" TargetType="DataGridColumnHeader">
             <Setter Property="Background" Value="{DynamicResource SurfaceAlt}"/>
             <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
@@ -261,7 +280,7 @@
             <DataGrid x:Name="DownloadGrid" Grid.Column="2" AutoGenerateColumns="False" IsReadOnly="True"
                       CanUserAddRows="False" CanUserDeleteRows="False" CanUserResizeRows="False" CanUserReorderColumns="True"
                       SelectionMode="Extended" SelectionUnit="FullRow" HeadersVisibility="Column"
-                      GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{DynamicResource Border}"
+                      GridLinesVisibility="None"
                       Background="{DynamicResource Surface}" RowBackground="Transparent" BorderThickness="0"
                       RowHeight="30" FontSize="13" Foreground="{DynamicResource Text}"
                       ColumnHeaderStyle="{StaticResource GridHeader}" CellStyle="{StaticResource GridCell}"
@@ -274,17 +293,17 @@
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Style="{StaticResource Glyph}" Text="{Binding CategoryGlyph}" Foreground="{Binding CategoryBrush}"
                                                FontSize="15" Margin="0,0,9,0"/>
-                                    <TextBlock Text="{Binding FileName, Mode=OneWay}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                    <TextBlock Text="{Binding FileName, Mode=OneWay}" Style="{StaticResource CellText}"
                                                ToolTip="{Binding FullPath, Mode=OneWay}"/>
                                 </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="{l:Tr ColSize}" Width="95" Binding="{Binding SizeText, Mode=OneWay}" SortMemberPath="TotalSize"/>
+                    <DataGridTextColumn Header="{l:Tr ColSize}" Width="95" Binding="{Binding SizeText, Mode=OneWay}" ElementStyle="{StaticResource CellText}" SortMemberPath="TotalSize"/>
                     <DataGridTemplateColumn Header="{l:Tr ColStatus}" Width="120" SortMemberPath="Progress">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock x:Name="St" Text="{Binding GridStatusText, Mode=OneWay}" ToolTip="{Binding ErrorMessage, Mode=OneWay}"/>
+                                <TextBlock x:Name="St" Text="{Binding GridStatusText, Mode=OneWay}" Style="{StaticResource CellText}" ToolTip="{Binding ErrorMessage, Mode=OneWay}"/>
                                 <DataTemplate.Triggers>
                                     <DataTrigger Binding="{Binding Status}" Value="Completed">
                                         <Setter TargetName="St" Property="Foreground" Value="{DynamicResource Success}"/>
@@ -300,9 +319,9 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="{l:Tr ColTimeLeft}" Width="105" Binding="{Binding GridEtaText, Mode=OneWay}"/>
-                    <DataGridTextColumn Header="{l:Tr ColRate}" Width="110" Binding="{Binding GridSpeedText, Mode=OneWay}"/>
-                    <DataGridTextColumn Header="{l:Tr ColAdded}" Width="135" Binding="{Binding DateAddedText, Mode=OneWay}" SortMemberPath="DateAdded"/>
+                    <DataGridTextColumn Header="{l:Tr ColTimeLeft}" Width="105" Binding="{Binding GridEtaText, Mode=OneWay}" ElementStyle="{StaticResource CellText}"/>
+                    <DataGridTextColumn Header="{l:Tr ColRate}" Width="110" Binding="{Binding GridSpeedText, Mode=OneWay}" ElementStyle="{StaticResource CellText}"/>
+                    <DataGridTextColumn Header="{l:Tr ColAdded}" Width="135" Binding="{Binding DateAddedText, Mode=OneWay}" ElementStyle="{StaticResource CellText}" SortMemberPath="DateAdded"/>
                 </DataGrid.Columns>
 
                 <DataGrid.ContextMenu>
