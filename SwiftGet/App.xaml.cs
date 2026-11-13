@@ -23,8 +23,12 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        _mutex = new Mutex(true, "SwiftGet.SingleInstance", out bool created);
-        _showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, "SwiftGet.ShowWindow");
+        // a copy with its own data folder (SWIFTGET_DATA_DIR, used for testing) runs separately
+        var instance = Environment.GetEnvironmentVariable("SWIFTGET_DATA_DIR") is { Length: > 0 } dir
+            ? "." + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(dir.ToLowerInvariant())))[..12]
+            : "";
+        _mutex = new Mutex(true, "SwiftGet.SingleInstance" + instance, out bool created);
+        _showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, "SwiftGet.ShowWindow" + instance);
         if (!created)
         {
             // Already running: ask the first instance to show its window, then quit.

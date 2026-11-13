@@ -76,7 +76,11 @@ public sealed class BrowserBridge : IDisposable
                 var lines = Encoding.Latin1.GetString(buf.GetBuffer(), 0, headerEnd).Split("\r\n");
                 var first = lines[0].Split(' ');
                 if (first.Length < 2) return;
-                string method = first[0], path = first[1];
+                string method = first[0], target = first[1];
+                // "/ping?from=extension" → path "/ping", query "from=extension"
+                int q = target.IndexOf('?');
+                string path = q < 0 ? target : target[..q];
+                string query = q < 0 ? "" : target[(q + 1)..];
 
                 var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var line in lines.Skip(1))
@@ -84,8 +88,10 @@ public sealed class BrowserBridge : IDisposable
                     int i = line.IndexOf(':');
                     if (i > 0) headers[line[..i].Trim()] = line[(i + 1)..].Trim();
                 }
-
-                if (headers.TryGetValue("Origin", out var extOrigin) && IsExtensionOrigin(extOrigin))
+                // Chrome sends no Origin header on an extension's simple GET requests, so the
+                // extension also marks its requests with ?from=extension.
+                if ((headers.TryGetValue("Origin", out var extOrigin) && IsExtensionOrigin(extOrigin)) ||
+                    query.Split('&').Contains("from=extension"))
                     LastExtensionContact = DateTime.Now;
 
                 if (headers.TryGetValue("Origin", out var origin) && !IsExtensionOrigin(origin))

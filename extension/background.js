@@ -55,7 +55,7 @@ function isExcluded(s, ...urls) {
 
 async function appIsRunning() {
   try {
-    const r = await fetchWithTimeout(appUrl(await settings()) + "/ping", { method: "GET" }, 1500);
+    const r = await fetchWithTimeout(appUrl(await settings()) + "/ping?from=extension", { method: "GET" }, 1500);
     return r.ok;
   } catch (_) {
     return false;
@@ -70,7 +70,7 @@ async function sendToApp(url, referrer, fileName) {
   } catch (_) {}
 
   try {
-    const r = await fetchWithTimeout(appUrl(await settings()) + "/add", {
+    const r = await fetchWithTimeout(appUrl(await settings()) + "/add?from=extension", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url, referrer: referrer || "", cookies, userAgent: navigator.userAgent, fileName: fileName || "" }),
@@ -116,11 +116,13 @@ chrome.runtime.onInstalled.addListener(async () => {
   await setupMenus();
   await updateBadge();
   chrome.alarms.create("ping", { periodInMinutes: 1 });
+  appIsRunning();   // let SwiftGet show "connected" right away
 });
 chrome.runtime.onStartup.addListener(async () => {
   await setupMenus();
   await updateBadge();
   chrome.alarms.create("ping", { periodInMinutes: 1 });
+  appIsRunning();
 });
 
 // lets the app show "extension connected"
@@ -155,7 +157,7 @@ async function sendAllLinks(tab, frameId) {
     } catch (_) {}
   }
   try {
-    const r = await fetchWithTimeout(appUrl(await settings()) + "/addmany", {
+    const r = await fetchWithTimeout(appUrl(await settings()) + "/addmany?from=extension", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
