@@ -54,10 +54,12 @@
 
 ## Install
 
-1. Download **`SwiftGet-Setup-x.y.z.exe`** from the [latest release](https://github.com/EmadNajafi/SwiftGet-Download-Manager/releases/latest) and run it. Administrator rights aren't needed.
-2. Windows may show *"Windows protected your PC"* because the installer isn't code-signed. Click **More info → Run anyway**.
+1. Download **`SwiftGet-x.y.z.zip`** from the [latest release](https://github.com/EmadNajafi/SwiftGet-Download-Manager/releases/latest). It has everything: the installer, the browser extension and a short read-me.
+2. Unzip it and run **`SwiftGet-Setup-x.y.z.exe`**. Administrator rights aren't needed.
+3. Windows may show *"Windows protected your PC"* because the installer isn't code-signed. Click **More info → Run anyway**.
 
-You can also use the **portable zip** from the same page: unzip it anywhere and run `SwiftGet.exe`.
+(The release also lists `SwiftGet-Setup-x.y.z.exe` on its own; SwiftGet's built-in updater uses that file.)
+
 
 Requirements: Windows 10 (1809) or Windows 11, 64-bit. Nothing else needs to be installed.
 
@@ -86,7 +88,7 @@ Requirements: [.NET 10 SDK](https://dotnet.microsoft.com/download) and, for the 
 git clone https://github.com/EmadNajafi/SwiftGet-Download-Manager.git
 cd SwiftGet-Download-Manager
 dotnet run --project SwiftGet          # run from source
-.\build.ps1 -Version 1.0.0             # dist\SwiftGet-Setup-1.0.0.exe + portable zip
+.\build.ps1 -Version 1.0.0             # dist\SwiftGet-1.0.0.zip (+ installer, store packages)
 ```
 
 Pushing a tag like `v1.0.1` builds the installer on GitHub Actions and publishes a release automatically.
@@ -148,7 +150,7 @@ Add a table to `SwiftGet/Core/Strings.cs` with the same keys as `En`, then add i
 
 ### نصب
 
-۱. فایل **SwiftGet-Setup** را از [صفحهٔ آخرین نسخه](https://github.com/EmadNajafi/SwiftGet-Download-Manager/releases/latest) دانلود و اجرا کنید. به دسترسی مدیر (Administrator) نیازی نیست.
+۱. فایل **SwiftGet-x.y.z.zip** را از [صفحهٔ آخرین نسخه](https://github.com/EmadNajafi/SwiftGet-Download-Manager/releases/latest) دانلود کنید. همه‌چیز داخل همین یک فایل است: نصب‌کننده، افزونهٔ مرورگر و راهنما. آن را از حالت فشرده خارج کنید و **SwiftGet-Setup** را اجرا کنید. به دسترسی مدیر (Administrator) نیازی نیست.
 
 ۲. چون فایل نصبی امضای دیجیتال ندارد، ممکن است ویندوز پیام «Windows protected your PC» نشان دهد. روی **More info** و سپس **Run anyway** بزنید.
 

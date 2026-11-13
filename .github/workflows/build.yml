@@ -33,12 +33,22 @@ jobs:
           $version = "${{ github.ref_name }}".TrimStart('v')
           .\build.ps1 -Version $version
 
+      - name: Keep store packages (for publishing the extension)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-store-packages
+          path: dist/store/*
+
       - name: Publish release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = "${{ github.ref_name }}"
+          $version = $tag.TrimStart('v')
+          # people download the zip; the in-app updater downloads the installer
+          $files = @("dist\SwiftGet-$version.zip", "dist\SwiftGet-Setup-$version.exe")
           gh release view $tag 2>$null
-          if ($LASTEXITCODE -eq 0) { gh release upload $tag (Get-ChildItem dist\*).FullName --clobber }
-          else { gh release create $tag (Get-ChildItem dist\*).FullName --title "SwiftGet $($tag.TrimStart('v'))" --generate-notes }
+          if ($LASTEXITCODE -eq 0) { gh release upload $tag $files --clobber }
+          else { gh release create $tag $files --title "SwiftGet $version" --generate-notes }
