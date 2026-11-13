@@ -45,12 +45,19 @@ Requirements: Windows 10 (1809) or Windows 11, 64-bit. Nothing else needs to be 
 
 ### Browser extension
 
-1. In SwiftGet open **Settings → Browser** and click **Open folder** (or tick *Set up the browser extension* at the end of setup).
-2. In your browser go to `chrome://extensions` (Edge: `edge://extensions`).
-3. Turn on **Developer mode**, click **Load unpacked** and choose that folder.
+The extension sends browser downloads to SwiftGet, adds **Download with SwiftGet** to the right-click menu, and lists the **videos and audio** playing on a page so you can save them with one click. You can choose which file types to catch, a minimum size and sites to skip.
 
-When SwiftGet isn't running, downloads simply stay in the browser. Click the extension icon to turn catching on or off.
+1. In SwiftGet open **Options → Browser** and click **Add to Chrome** (or Edge, Brave, Opera).
+2. A short guide opens in the browser and the extension folder opens in Explorer. The address of the extensions page is already copied, so paste it into the address bar.
+3. Turn on **Developer mode** and drag the `extension` folder onto the page.
 
+SwiftGet shows **The extension is connected** within a minute. When SwiftGet isn't running, downloads simply stay in the browser.
+
+> Once the extension is published in the Chrome Web Store and Edge Add-ons, the installer adds it automatically. See [docs/PUBLISHING.md](docs/PUBLISHING.md).
+
+### Starts with Windows
+
+SwiftGet starts with Windows and waits in the notification area, so browser downloads and scheduled queues always work. You can turn this off during setup or in **Options → General**.
 ## Build from source
 
 Requirements: [.NET 10 SDK](https://dotnet.microsoft.com/download) and, for the installer, [Inno Setup 6](https://jrsoftware.org/isinfo.php) (`winget install JRSoftware.InnoSetup`).
@@ -117,12 +124,16 @@ Add a table to `SwiftGet/Core/Strings.cs` with the same keys as `En`, then add i
 
 ۳. برای تغییر زبان به **تنظیمات ← ظاهر** بروید.
 
+### افزونهٔ مرورگر
+
+افزونه دانلودهای مرورگر را به SwiftGet می‌فرستد و ویدیو و صدای در حال پخش در صفحه را هم نشان می‌دهد تا با یک کلیک دانلود شوند. SwiftGet همراه ویندوز اجرا می‌شود و کنار ساعت منتظر می‌ماند.
+
 ### نصب افزونهٔ مرورگر
 
-۱. در SwiftGet به **تنظیمات ← مرورگر** بروید و روی «باز کردن پوشه» بزنید.
+۱. در SwiftGet به **تنظیمات ← مرورگر** بروید و روی «افزودن به Chrome» (یا Edge) بزنید. راهنما و پوشهٔ افزونه باز می‌شوند و آدرس صفحهٔ افزونه‌ها کپی می‌شود.
 
-۲. در مرورگر به آدرس `chrome://extensions` (یا `edge://extensions`) بروید.
+۲. آدرس کپی‌شده را در نوار آدرس مرورگر بچسبانید.
 
-۳. گزینهٔ **Developer mode** را روشن کنید، روی **Load unpacked** بزنید و همان پوشه را انتخاب کنید.
+۳. گزینهٔ **Developer mode** را روشن کنید و پوشهٔ `extension` را روی صفحه بکشید.
 
 </div>

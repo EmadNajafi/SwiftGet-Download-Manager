@@ -27,7 +27,9 @@ public sealed class AppSettings
     public int BridgePort { get; set; } = 47321;
     public bool ShowCompleteDialog { get; set; } = true;
     public bool ShowProgressWindow { get; set; } = true;
-    public bool StartWithWindows { get; set; }
+    public bool StartWithWindows { get; set; } = true;
+    /// <summary>Set once the first-run "start with Windows" default has been applied.</summary>
+    public bool AutostartInitialized { get; set; }
     /// <summary>"en", "fa", or empty for the Windows language.</summary>
     public string Language { get; set; } = "";
     /// <summary>"System", "Light" or "Dark".</summary>

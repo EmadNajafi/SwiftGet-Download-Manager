@@ -95,8 +95,14 @@ public partial class SettingsWindow : Window
         // browser
         ExtensionPathBox.Text = ExtensionFolder;
         int n = 1;
-        foreach (var key in new[] { "BrowserStep1", "BrowserStep2", "BrowserStep3" })
+        foreach (var key in new[] { "BrowserStepA", "BrowserStepB", "BrowserStepC" })
             StepsPanel.Children.Add(Step(n++, Loc.T(key)));
+        BuildBrowserButtons();
+        UpdateExtensionStatus();
+        var statusTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        statusTimer.Tick += (_, _) => UpdateExtensionStatus();
+        statusTimer.Start();
+        Closed += (_, _) => statusTimer.Stop();
 
         // appearance
         LanguageBox.ItemsSource = new[] { new Choice("", Loc.T("LangSystem")), new Choice("en", "English"), new Choice("fa", "فارسی") };
@@ -108,6 +114,47 @@ public partial class SettingsWindow : Window
         ThemeBox.SelectedItem = ((Choice[])ThemeBox.ItemsSource).FirstOrDefault(c => c.Value == current.Theme) ?? ((Choice[])ThemeBox.ItemsSource)[0];
 
         VersionText.Text = Loc.F("AboutVersion", App.Version);
+    }
+
+    void BuildBrowserButtons()
+    {
+        var browsers = BrowserIntegration.Installed();
+        ManualSteps.Visibility = browsers.Any(b => b.StoreUrl == null) || browsers.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (browsers.Count == 0)
+        {
+            BrowsersPanel.Children.Add(new TextBlock { Text = Loc.T("NoBrowsers"), Margin = new Thickness(10), Foreground = (Brush)FindResource("TextSecondary") });
+            return;
+        }
+        foreach (var b in browsers)
+        {
+            var grid = new Grid { Margin = new Thickness(10, 6, 6, 6) };
+            grid.ColumnDefinitions.Add(new ColumnDefinition());
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var name = new TextBlock { Text = b.Name, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center, Foreground = (Brush)FindResource("Text") };
+            var button = new Button
+            {
+                Content = Loc.F("AddToBrowser", b.Name),
+                Style = (Style)FindResource(b == browsers[0] ? "AccentButton" : "SecondaryButton"),
+                MinWidth = 170,
+            };
+            var browser = b;
+            button.Click += (_, _) => BrowserIntegration.BeginInstall(browser);
+            Grid.SetColumn(button, 1);
+            grid.Children.Add(name);
+            grid.Children.Add(button);
+            BrowsersPanel.Children.Add(grid);
+        }
+    }
+
+    void UpdateExtensionStatus()
+    {
+        var seen = BrowserBridge.LastExtensionContact;
+        bool connected = seen != null && DateTime.Now - seen.Value < TimeSpan.FromMinutes(3);
+        ExtStatusText.Text = Loc.T(connected ? "ExtConnected" : "ExtNotConnected");
+        ExtStatusHint.Text = Loc.T(connected ? "ExtConnectedHint" : "ExtNotConnectedHint");
+        ExtStatusGlyph.Text = connected ? "" : "";
+        ExtStatusGlyph.Foreground = (Brush)FindResource(connected ? "Success" : "Warning");
+        ExtStatusBadge.Background = (Brush)FindResource(connected ? "SuccessSoft" : "WarningSoft");
     }
 
     FrameworkElement Step(int number, string text)

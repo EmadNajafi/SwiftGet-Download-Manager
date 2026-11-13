@@ -22,6 +22,20 @@ $zip = Join-Path $root "dist\SwiftGet-$Version-portable.zip"
 if (Test-Path $zip) { Remove-Item $zip }
 Compress-Archive -Path "$app\*" -DestinationPath $zip
 
+Write-Host "Packaging the browser extension for the Chrome Web Store / Edge Add-ons..." -ForegroundColor Cyan
+$pack = Join-Path ([IO.Path]::GetTempPath()) "swiftget-extension-pack"
+if (Test-Path $pack) { Remove-Item $pack -Recurse -Force }
+Copy-Item (Join-Path $root "extension") $pack -Recurse
+$manifestPath = Join-Path $pack "manifest.json"
+$manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+$manifest.PSObject.Properties.Remove("key")      # stores assign their own ID and reject "key"
+$manifest.version = $Version
+[IO.File]::WriteAllText($manifestPath, ($manifest | ConvertTo-Json -Depth 10), (New-Object System.Text.UTF8Encoding $false))
+$extZip = Join-Path $root "dist\SwiftGet-Extension-$Version.zip"
+if (Test-Path $extZip) { Remove-Item $extZip }
+Compress-Archive -Path "$pack\*" -DestinationPath $extZip
+Remove-Item $pack -Recurse -Force
+
 $iscc = @(
     "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe",
     "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",

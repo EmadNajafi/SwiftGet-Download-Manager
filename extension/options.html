@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>SwiftGet</title>
+  <link rel="icon" href="icons/icon32.png">
+  <link rel="stylesheet" href="ui.css">
+  <style>
+    body { padding: 32px 16px 48px; }
+    .page { max-width: 680px; margin: 0 auto; }
+    .top { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+    .top img { border-radius: 12px; }
+    h1 { font-size: 22px; margin: 0; }
+    h2 { font-size: 12px; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: .4px; margin: 22px 4px 8px; }
+    [dir="rtl"] h2 { text-transform: none; letter-spacing: 0; font-size: 13px; }
+    .card { padding: 4px 18px; }
+    .opt { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; }
+    .opt + .opt { border-top: 1px solid var(--border); }
+    .opt.col { flex-direction: column; align-items: stretch; gap: 8px; }
+    .opt-title { font-weight: 600; }
+    .opt-hint { color: var(--muted); font-size: 12px; }
+    textarea, input[type=number] {
+      width: 100%; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text);
+      padding: 9px 11px; font: 13px/1.5 Consolas, "Cascadia Mono", monospace; resize: vertical; direction: ltr;
+    }
+    input[type=number] { width: 140px; font-family: inherit; }
+    textarea:focus, input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+    .actions { display: flex; align-items: center; gap: 12px; margin-top: 22px; }
+    .saved { color: var(--ok); font-weight: 600; opacity: 0; transition: opacity .2s; }
+    .saved.show { opacity: 1; }
+    .row-end { display: flex; justify-content: flex-end; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="top">
+      <img src="icons/icon128.png" width="52" height="52" alt="">
+      <div>
+        <h1 data-i18n="optTitle"></h1>
+        <div class="muted" data-i18n="extDescription"></div>
+      </div>
+    </div>
+
+    <h2 data-i18n="optGeneral"></h2>
+    <div class="card">
+      <label class="opt"><span class="opt-title" data-i18n="optCatch"></span><input id="enabled" type="checkbox" class="switch"></label>
+      <label class="opt"><span class="opt-title" data-i18n="optMenu"></span><input id="contextMenu" type="checkbox" class="switch"></label>
+      <label class="opt"><span class="opt-title" data-i18n="optMedia"></span><input id="detectMedia" type="checkbox" class="switch"></label>
+    </div>
+
+    <h2 data-i18n="optFilters"></h2>
+    <div class="card">
+      <div class="opt col">
+        <span class="opt-title" data-i18n="optTypes"></span>
+        <textarea id="extensions" rows="4" spellcheck="false"></textarea>
+        <div class="row-end"><button id="resetTypes" class="btn" data-i18n="optReset"></button></div>
+        <span class="opt-hint" data-i18n="optTypesHint"></span>
+      </div>
+      <div class="opt col">
+        <span class="opt-title" data-i18n="optMinSize"></span>
+        <input id="minSizeKB" type="number" min="0" step="100" lang="en">
+        <span class="opt-hint" data-i18n="optMinSizeHint"></span>
+      </div>
+      <div class="opt col">
+        <span class="opt-title" data-i18n="optExcluded"></span>
+        <textarea id="excludedSites" rows="3" spellcheck="false" placeholder="example.com"></textarea>
+        <span class="opt-hint" data-i18n="optExcludedHint"></span>
+      </div>
+    </div>
+
+    <h2 data-i18n="optConnection"></h2>
+    <div class="card">
+      <div class="opt col">
+        <span class="opt-title" data-i18n="optPort"></span>
+        <input id="port" type="number" min="1024" max="65535" lang="en">
+        <span class="opt-hint" data-i18n="optPortHint"></span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="save" class="btn primary" data-i18n="optSave"></button>
+      <span id="saved" class="saved" data-i18n="optSaved"></span>
+    </div>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>

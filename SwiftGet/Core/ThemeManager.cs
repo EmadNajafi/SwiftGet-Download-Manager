@@ -83,8 +83,43 @@ public static class Autostart
         }
     }
 
+    /// <summary>
+    /// First run: start with Windows unless the installer recorded that the user unticked it.
+    /// Later runs: keep the registered path pointing at this copy of SwiftGet.
+    /// </summary>
+    public static void Initialize(AppSettings settings, Action save)
+    {
+        if (!settings.AutostartInitialized)
+        {
+            bool wanted = InstallerChoice() ?? true;
+            Set(wanted);
+            settings.StartWithWindows = wanted;
+            settings.AutostartInitialized = true;
+            save();
+        }
+        else if (IsEnabled)
+        {
+            Set(true);   // refresh the path (e.g. after reinstalling to another folder)
+        }
+    }
+
+    /// <summary>The installer writes HKCU\Software\SwiftGet\AutostartChoice = 1 or 0.</summary>
+    static bool? InstallerChoice()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(@"Software\SwiftGet");
+            return key?.GetValue("AutostartChoice") is int v ? v != 0 : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public static void Set(bool enabled)
     {
+        if (Environment.GetEnvironmentVariable("SWIFTGET_NO_AUTOSTART") == "1") return;   // test runs
         try
         {
             using var key = Registry.CurrentUser.CreateSubKey(RunKey);

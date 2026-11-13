@@ -1,10 +1,13 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extName__",
+  "short_name": "SwiftGet",
   "description": "__MSG_extDescription__",
-  "version": "1.0.0",
+  "version": "1.3.0",
   "default_locale": "en",
-  "permissions": ["downloads", "contextMenus", "cookies", "storage"],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqgvc6XRcYdi2LYc9xnDblggT22rGpBfawErFf93s/6/3wXkzKqhZbOt+yAK1ggYeBim2hF+vHeVHWsfcBG0iN8pWW3YKlKyVaGjdF5wqYkK+k59r+TlLQ+Qa5cfPD7WOqbvsGOS/YSk1ZKCxJKaE6mR88zHKKvz/0XSt/MACl+C+hpsXuOUNyQ5OClK7DWHBzxjQDaaGA402mFZieNM5a+TF/J86KmQ4WJ8GxZXpLFtBF+yeRcVcW0bW57K/EdrW8rApEZFbMNiwJft0e57X2LBq8QD+HlOiwgIknxthgIIrSF6l6ntfOjHaNXKKRgh70Bn7nMoxujWvwtlWNd2QSQIDAQAB",
+  "minimum_chrome_version": "110",
+  "permissions": ["downloads", "contextMenus", "cookies", "storage", "webRequest", "alarms", "tabs"],
   "host_permissions": ["<all_urls>"],
   "background": { "service_worker": "background.js" },
   "action": {
@@ -12,5 +15,6 @@
     "default_popup": "popup.html",
     "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png" }
   },
+  "options_ui": { "page": "options.html", "open_in_tab": true },
   "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
 }

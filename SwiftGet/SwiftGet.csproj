@@ -10,7 +10,7 @@
     <AssemblyName>SwiftGet</AssemblyName>
     <RootNamespace>SwiftGet</RootNamespace>
     <ApplicationIcon>Assets\SwiftGet.ico</ApplicationIcon>
-    <Version>1.2.1</Version>
+    <Version>1.3.0</Version>
     <Product>SwiftGet</Product>
     <Description>SwiftGet Download Manager</Description>
     <Copyright>Copyright © 2026 SwiftGet contributors</Copyright>
@@ -33,6 +33,7 @@
 
   <ItemGroup>
     <None Include="..\extension\**\*" LinkBase="extension" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Assets\extension-guide.html" Link="guide\extension-guide.html" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

@@ -270,8 +270,10 @@ public partial class MainWindow : Window
         StopQueueButton.IsEnabled = target.IsRunning;
         StartQueueButton.ToolTip = StopQueueButton.ToolTip = target.DisplayName;
 
-        BridgeText.Text = Loc.T(_bridgeOk ? "BrowserConnected" : "BrowserOff");
-        BridgeDot.Fill = (Brush)FindResource(_bridgeOk ? "Success" : "Danger");
+        var seen = BrowserBridge.LastExtensionContact;
+        bool extension = seen != null && DateTime.Now - seen.Value < TimeSpan.FromMinutes(3);
+        BridgeText.Text = Loc.T(!_bridgeOk ? "BrowserOff" : extension ? "ExtConnected" : "ExtNotConnected");
+        BridgeDot.Fill = (Brush)FindResource(!_bridgeOk ? "Danger" : extension ? "Success" : "Warning");
 
         if (_tray != null)
         {

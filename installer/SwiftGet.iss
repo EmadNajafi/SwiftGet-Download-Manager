@@ -1,10 +1,14 @@
 ; SwiftGet installer — build with build.ps1, or: ISCC.exe /DAppVersion=1.0.0 installer\SwiftGet.iss
 #ifndef AppVersion
-  #define AppVersion "1.2.1"
+  #define AppVersion "1.3.0"
 #endif
 #define AppName "SwiftGet"
 #define AppExe "SwiftGet.exe"
 #define AppUrl "https://github.com/EmadNajafi/SwiftGet-Download-Manager"
+; Store IDs of the browser extension. When set, the installer registers the extension and the
+; browser offers to turn it on at its next start (same values as BrowserIntegration.cs).
+#define ChromeStoreId ""
+#define EdgeStoreId ""
 
 [Setup]
 AppId={{7C2B6E14-5D3A-4F7B-9E61-2A8C4D0B9F35}
@@ -60,7 +64,19 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 [Registry]
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "SwiftGet"; \
     ValueData: """{app}\{#AppExe}"" --minimized"; Tasks: startup; Flags: uninsdeletevalue
+; tells SwiftGet what was chosen here, so its first run doesn't override it
+Root: HKCU; Subkey: "Software\SwiftGet"; ValueType: dword; ValueName: "AutostartChoice"; ValueData: 1; Tasks: startup; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\SwiftGet"; ValueType: dword; ValueName: "AutostartChoice"; ValueData: 0; Tasks: not startup; Flags: uninsdeletekey
 
+
+#if ChromeStoreId != ""
+Root: HKCU; Subkey: "Software\Google\Chrome\Extensions\{#ChromeStoreId}"; ValueType: string; ValueName: "update_url"; \
+    ValueData: "https://clients2.google.com/service/update2/crx"; Flags: uninsdeletekey
+#endif
+#if EdgeStoreId != ""
+Root: HKCU; Subkey: "Software\Microsoft\Edge\Extensions\{#EdgeStoreId}"; ValueType: string; ValueName: "update_url"; \
+    ValueData: "https://edge.microsoft.com/extensionwebstorebase/v1/crx"; Flags: uninsdeletekey
+#endif
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent

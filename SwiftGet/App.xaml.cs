@@ -50,6 +50,7 @@ public partial class App : Application
         Loc.I.SetLanguage(_manager.Settings.Language);
         ThemeManager.Apply(_manager.Settings.Theme);
         ThemeManager.WatchSystem();
+        Autostart.Initialize(_manager.Settings, () => _manager.ApplySettings(_manager.Settings));
 
         _main = new MainWindow(_manager);
         if (!e.Args.Contains("--minimized")) _main.Show();

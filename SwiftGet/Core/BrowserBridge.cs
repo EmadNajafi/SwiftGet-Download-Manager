@@ -21,6 +21,9 @@ public sealed class BrowserBridge : IDisposable
     readonly CancellationTokenSource _cts = new();
 
     public event Action<BridgeRequest>? DownloadRequested;
+
+    /// <summary>Last time the browser extension contacted the app (it checks in about once a minute).</summary>
+    public static DateTime? LastExtensionContact { get; private set; }
     public int Port { get; }
 
     public BrowserBridge(int port)
@@ -77,6 +80,9 @@ public sealed class BrowserBridge : IDisposable
                     int i = line.IndexOf(':');
                     if (i > 0) headers[line[..i].Trim()] = line[(i + 1)..].Trim();
                 }
+
+                if (headers.TryGetValue("Origin", out var extOrigin) && IsExtensionOrigin(extOrigin))
+                    LastExtensionContact = DateTime.Now;
 
                 if (headers.TryGetValue("Origin", out var origin) && !IsExtensionOrigin(origin))
                 {

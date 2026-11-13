@@ -2,24 +2,51 @@
 <html>
 <head>
   <meta charset="utf-8">
+  <link rel="stylesheet" href="ui.css">
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <header>
-    <img src="icons/icon48.png" width="32" height="32" alt="">
-    <div>
+  <header class="hero">
+    <img src="icons/icon48.png" width="38" height="38" alt="">
+    <div class="hero-text">
       <div class="title">SwiftGet</div>
-      <div id="status" class="status"><span class="dot"></span><span id="statusText"></span></div>
+      <div id="status" class="status"><span class="dot"></span><span id="statusText">…</span></div>
     </div>
   </header>
-  <label class="row">
-    <div>
-      <div class="label" data-i18n="popupCapture"></div>
-      <div class="hint" data-i18n="popupCaptureHint"></div>
+
+  <main>
+    <label class="card row">
+      <span class="row-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></svg>
+      </span>
+      <span class="row-text">
+        <span class="label" data-i18n="popupCapture"></span>
+        <span class="hint" data-i18n="popupCaptureHint"></span>
+      </span>
+      <input id="enabled" type="checkbox" class="switch">
+    </label>
+
+    <div id="offline" class="card notice" hidden>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16.5v.01"/></svg>
+      <span data-i18n="popupStartApp"></span>
     </div>
-    <input id="enabled" type="checkbox" class="switch">
-  </label>
-  <p id="help" class="help" data-i18n="popupOpenApp" hidden></p>
+
+    <section>
+      <div class="section-head">
+        <span data-i18n="popupMedia"></span>
+        <span id="mediaCount" class="count"></span>
+      </div>
+      <div id="mediaList" class="card list"></div>
+    </section>
+  </main>
+
+  <footer>
+    <button id="openOptions" class="link">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      <span data-i18n="popupSettings"></span>
+    </button>
+    <span id="version" class="faint"></span>
+  </footer>
   <script src="popup.js"></script>
 </body>
 </html>
