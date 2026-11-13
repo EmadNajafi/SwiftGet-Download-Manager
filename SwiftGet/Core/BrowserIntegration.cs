@@ -20,6 +20,8 @@ public static class BrowserIntegration
     public const string EdgeStoreId = "";
 
     public static string ExtensionFolder => Path.Combine(AppContext.BaseDirectory, "extension");
+    public static string FirefoxFolder => Path.Combine(AppContext.BaseDirectory, "extension-firefox");
+    static string FolderFor(BrowserInfo b) => b.Key == "firefox" && Directory.Exists(FirefoxFolder) ? FirefoxFolder : ExtensionFolder;
 
     public static IReadOnlyList<BrowserInfo> Installed()
     {
@@ -36,6 +38,7 @@ public static class BrowserIntegration
             : ChromeStoreId.Length > 0 ? $"https://chromewebstore.google.com/detail/{ChromeStoreId}" : null);
         Add("brave", "Brave", "brave.exe", "brave://extensions/",
             ChromeStoreId.Length > 0 ? $"https://chromewebstore.google.com/detail/{ChromeStoreId}" : null);
+        Add("firefox", "Mozilla Firefox", "firefox.exe", "about:debugging#/runtime/this-firefox", null);
         Add("opera", "Opera", "opera.exe", "opera://extensions",
             ChromeStoreId.Length > 0 ? $"https://chromewebstore.google.com/detail/{ChromeStoreId}" : null);
         return list;
@@ -75,7 +78,12 @@ public static class BrowserIntegration
         if (File.Exists(guide))
             Launch(browser.ExePath, new Uri(guide).AbsoluteUri + $"?lang={Loc.I.Language}&browser={browser.Key}");
         if (Directory.Exists(AppContext.BaseDirectory))
-            try { Process.Start("explorer.exe", $"/select,\"{ExtensionFolder}\""); } catch { }
+        {
+            var folder = FolderFor(browser);
+            // Firefox loads an add-on by its manifest file; Chromium browsers take the folder
+            var select = browser.Key == "firefox" ? Path.Combine(folder, "manifest.json") : folder;
+            try { Process.Start("explorer.exe", $"/select,\"{select}\""); } catch { }
+        }
     }
 
     static void Launch(string exe, string url)

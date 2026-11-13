@@ -1,6 +1,6 @@
 ; SwiftGet installer — build with build.ps1, or: ISCC.exe /DAppVersion=1.0.0 installer\SwiftGet.iss
 #ifndef AppVersion
-  #define AppVersion "1.3.0"
+  #define AppVersion "2.0.0"
 #endif
 #define AppName "SwiftGet"
 #define AppExe "SwiftGet.exe"
@@ -84,5 +84,14 @@ Filename: "{app}\{#AppExe}"; Parameters: "--browser-setup"; Description: "Set up
     Flags: nowait postinstall skipifsilent unchecked
 
 
+; after a silent update started from SwiftGet (/UPDATE=1), start it again
+Filename: "{app}\{#AppExe}"; Parameters: "--minimized"; Flags: nowait; Check: IsUpdate
+
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
+
+[Code]
+function IsUpdate: Boolean;
+begin
+  Result := ExpandConstant('{param:UPDATE|0}') = '1';
+end;

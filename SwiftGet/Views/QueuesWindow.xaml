@@ -164,6 +164,16 @@
                                                   Margin="0,12,0,0" SelectionChanged="Editor_Changed"/>
                                     </Grid>
                                 </Border>
+
+                                <Border Style="{StaticResource Card}" Margin="0,10,0,0">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <CheckBox x:Name="SyncBox" Style="{StaticResource Check}" Content="{l:Tr QSync}" Click="Editor_Changed"/>
+                                            <ComboBox x:Name="SyncHoursBox" Width="110" Margin="12,0,0,0" SelectionChanged="Editor_Changed"/>
+                                        </StackPanel>
+                                        <TextBlock Text="{l:Tr QSyncHint}" Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="28,6,0,0"/>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </ScrollViewer>
                     </TabItem>

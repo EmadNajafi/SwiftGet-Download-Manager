@@ -43,6 +43,7 @@ public sealed class DownloadManager
     {
         Settings = Storage.Load<AppSettings>(SettingsFile) ?? new AppSettings();
         Limiter.BytesPerSecond = Settings.SpeedLimitKBps * 1024L;
+        Http.Configure(Settings);
 
         LoadQueues();
 
@@ -174,7 +175,12 @@ public sealed class DownloadManager
             wait = e.RunningTask;
             _engines.Remove(item.Id);
         }
-        wait.ContinueWith(_ => { try { if (File.Exists(temp)) File.Delete(temp); } catch { } });
+        var parts = item.StreamPartsDir;
+        wait.ContinueWith(_ =>
+        {
+            try { if (File.Exists(temp)) File.Delete(temp); } catch { }
+            try { if (Directory.Exists(parts)) Directory.Delete(parts, true); } catch { }
+        });
 
         if (deleteCompletedFile && item.Status == DownloadStatus.Completed && File.Exists(full))
         {
@@ -193,7 +199,13 @@ public sealed class DownloadManager
     public void Restart(DownloadItem item)
     {
         if (IsRunning(item)) return;
-        lock (item.SyncRoot) item.Segments = new List<Segment>();
+        lock (item.SyncRoot)
+        {
+            item.Segments = new List<Segment>();
+            item.StreamDone = 0;
+            item.StreamBytes = 0;
+        }
+        try { if (Directory.Exists(item.StreamPartsDir)) Directory.Delete(item.StreamPartsDir, true); } catch { }
         item.Status = DownloadStatus.Paused;
         item.DateCompleted = null;
         Start(item);
@@ -208,6 +220,7 @@ public sealed class DownloadManager
         {
             if (FindQueue(e.Item.QueueId) is { } q) q.CompletedThisRun++;
             ItemCompleted?.Invoke(e.Item);
+            ScanIfEnabled(e.Item);
         }
         Save();
         Pump();
@@ -323,11 +336,126 @@ public sealed class DownloadManager
             QueueFinishActionRequested?.Invoke(q, q.FinishAction);
     }
 
+    // ------------------------------------------------------------------ refresh address
+
+    /// <summary>
+    /// Gives a download a new address (e.g. when the old link expired) and continues from where it stopped.
+    /// Returns an error message, or null on success.
+    /// </summary>
+    public async Task<string?> RefreshAddressAsync(DownloadItem item, string url, string? referrer = null, string? cookies = null)
+    {
+        try
+        {
+            var probe = await DownloadEngine.ProbeAsync(url, referrer ?? item.Referrer, cookies ?? item.Cookies, item.UserAgent, CancellationToken.None);
+            if (!item.IsStream && item.TotalSize > 0 && probe.Size > 0 && probe.Size != item.TotalSize)
+                return Loc.F("RefreshSizeMismatch", Format.Size(probe.Size), Format.Size(item.TotalSize));
+            bool wasRunning = IsRunning(item);
+            if (_engines.TryGetValue(item.Id, out var e))
+            {
+                e.Stop();
+                await e.RunningTask;
+            }
+            item.Url = url;
+            if (referrer != null) item.Referrer = referrer;
+            if (cookies != null) item.Cookies = cookies;
+            if (item.Status == DownloadStatus.Error) item.Status = DownloadStatus.Paused;
+            Save();
+            if (wasRunning || item.Status != DownloadStatus.Completed) Start(item);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return ex.Message;
+        }
+    }
+
+    // ------------------------------------------------------------------ synchronization queues
+
+    bool _syncing;
+
+    async Task SyncQueuesAsync()
+    {
+        if (_syncing) return;
+        _syncing = true;
+        try
+        {
+            foreach (var q in Queues.Where(q => q.SyncEnabled && DateTime.Now - q.LastSync >= TimeSpan.FromHours(Math.Max(1, q.SyncIntervalHours))).ToList())
+            {
+                q.LastSync = DateTime.Now;
+                bool changedAny = false;
+                foreach (var item in ItemsOf(q).Where(i => i.Status == DownloadStatus.Completed && !i.IsStream))
+                {
+                    try
+                    {
+                        var p = await DownloadEngine.ProbeAsync(item.Url, item.Referrer, item.Cookies, item.UserAgent, CancellationToken.None);
+                        bool changed = (p.Size > 0 && p.Size != item.TotalSize)
+                                       || (p.ETag != null && item.RemoteETag != null && p.ETag != item.RemoteETag)
+                                       || (p.LastModified != null && item.RemoteLastModified != null && p.LastModified > item.RemoteLastModified);
+                        if (!changed) continue;
+                        lock (item.SyncRoot) item.Segments = new List<Segment>();
+                        item.ReplaceExisting = true;
+                        item.DateCompleted = null;
+                        item.Status = DownloadStatus.Queued;
+                        changedAny = true;
+                        Notify?.Invoke(Loc.T("SyncTitle"), Loc.F("SyncChanged", item.FileName));
+                    }
+                    catch
+                    {
+                        // server not reachable right now; try again next time
+                    }
+                }
+                SaveQueues();
+                Save();
+                if (changedAny) StartQueue(q);
+            }
+        }
+        finally
+        {
+            _syncing = false;
+        }
+    }
+
+    // ------------------------------------------------------------------ antivirus
+
+    void ScanIfEnabled(DownloadItem item)
+    {
+        if (!Settings.ScanAfterDownload || !File.Exists(item.FullPath)) return;
+        var path = item.FullPath;
+        var name = item.FileName;
+        var s = Settings;
+        Task.Run(async () =>
+        {
+            string exe, args;
+            if (string.IsNullOrWhiteSpace(s.ScannerPath))
+            {
+                exe = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Windows Defender", "MpCmdRun.exe");
+                args = $"-Scan -ScanType 3 -File \"{path}\"";
+            }
+            else
+            {
+                exe = s.ScannerPath;
+                args = (s.ScannerArgs ?? "\"%1\"").Replace("%1", path);
+            }
+            if (!File.Exists(exe)) return;
+            try
+            {
+                using var p = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe, args) { CreateNoWindow = true, UseShellExecute = false })!;
+                await p.WaitForExitAsync();
+                // Microsoft Defender returns 2 when it found a threat
+                if (p.ExitCode == 2 || (!string.IsNullOrWhiteSpace(s.ScannerPath) && p.ExitCode != 0))
+                    System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
+                        Notify?.Invoke(Loc.T("ScanThreatTitle"), Loc.F("ScanThreat", name)));
+            }
+            catch { }
+        });
+    }
+
     // ------------------------------------------------------------------ scheduler
 
     void CheckSchedule()
     {
         var now = DateTime.Now;
+        _ = SyncQueuesAsync();
         foreach (var q in Queues.ToList())
         {
             bool today = q.StartMode == QueueStartMode.Once
@@ -384,6 +512,33 @@ public sealed class DownloadManager
         catch { }
     }
 
+    /// <summary>Writes downloads to a SwiftGet list file (JSON) that can be imported on another computer.</summary>
+    public void ExportList(string path, IEnumerable<DownloadItem> items)
+    {
+        var arr = new JsonArray();
+        foreach (var item in items)
+            lock (item.SyncRoot)
+                arr.Add(JsonSerializer.SerializeToNode(item, Storage.Json));
+        File.WriteAllText(path, arr.ToJsonString(Storage.Json));
+    }
+
+    /// <summary>Adds the downloads from a list file; ones already in the list are skipped. Returns how many were added.</summary>
+    public int ImportList(string path)
+    {
+        var list = JsonSerializer.Deserialize<List<DownloadItem>>(File.ReadAllText(path), Storage.Json) ?? new();
+        int added = 0;
+        foreach (var item in list)
+        {
+            if (Items.Any(i => i.Id == item.Id || (i.Url == item.Url && i.FileName == item.FileName))) continue;
+            if (item.Status is DownloadStatus.Connecting or DownloadStatus.Downloading) item.Status = DownloadStatus.Paused;
+            if (item.QueueId != null && FindQueue(item.QueueId) == null) item.QueueId = null;
+            Items.Add(item);
+            added++;
+        }
+        Save();
+        return added;
+    }
+
     public void SaveQueues()
     {
         try { Storage.Save(QueuesFile, Queues.ToList()); } catch { }
@@ -393,6 +548,7 @@ public sealed class DownloadManager
     {
         Settings = settings;
         Limiter.BytesPerSecond = settings.SpeedLimitKBps * 1024L;
+        Http.Configure(settings);
         Storage.Save(SettingsFile, settings);
         Pump();
     }

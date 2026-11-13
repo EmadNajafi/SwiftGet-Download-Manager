@@ -15,6 +15,7 @@ const DEFAULTS = {
   excludedSites: "",
   contextMenu: true,
   detectMedia: true,
+  floatingButton: true,
 };
 
 const MEDIA_EXT = /\.(mp4|m4v|webm|mkv|mov|avi|flv|3gp|mp3|m4a|aac|ogg|oga|opus|wav|flac)(\?|#|$)/i;
@@ -108,6 +109,7 @@ async function setupMenus() {
   const s = await settings();
   if (!s.contextMenu) return;
   chrome.contextMenus.create({ id: "swiftget-link", title: chrome.i18n.getMessage("menuDownload"), contexts: ["link", "video", "audio", "image"] });
+  chrome.contextMenus.create({ id: "swiftget-all", title: chrome.i18n.getMessage("menuDownloadAll"), contexts: ["page", "selection"] });
 }
 
 chrome.runtime.onInstalled.addListener(async () => {
@@ -132,8 +134,40 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   const url = info.linkUrl || info.srcUrl;
-  if (info.menuItemId === "swiftget-link" && url && /^https?:/i.test(url)) await sendToApp(url, tab && tab.url);
+  if (info.menuItemId === "swiftget-link" && url && /^(https?|ftp):/i.test(url)) await sendToApp(url, tab && tab.url);
+  if (info.menuItemId === "swiftget-all" && tab?.id != null) await sendAllLinks(tab, info.frameId || 0);
 });
+
+/// Collects the page's links (or the selected ones) and lets SwiftGet show them in its link picker.
+async function sendAllLinks(tab, frameId) {
+  let res;
+  try { res = await chrome.tabs.sendMessage(tab.id, { type: "collectLinks" }, { frameId }); } catch (_) { return false; }
+  const seen = new Set();
+  const links = (res?.links || []).filter((l) => !seen.has(l.href) && seen.add(l.href));
+  if (!links.length) return false;
+
+  // cookies per site, so links that need a login still work
+  const cookiesByHost = {};
+  for (const host of [...new Set(links.map((l) => hostOf(l.href)))].slice(0, 30)) {
+    try {
+      const list = await chrome.cookies.getAll({ domain: host });
+      cookiesByHost[host] = list.map((c) => `${c.name}=${c.value}`).join("; ");
+    } catch (_) {}
+  }
+  try {
+    const r = await fetchWithTimeout(appUrl(await settings()) + "/addmany", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: links.slice(0, 5000).map((l) => ({ url: l.href, cookies: cookiesByHost[hostOf(l.href)] || "", fileName: "" })),
+        referrer: tab.url, userAgent: navigator.userAgent, title: res.title || tab.title || "",
+      }),
+    }, 5000);
+    return r.ok;
+  } catch (_) {
+    return false;
+  }
+}
 // ---------------------------------------------------------------- catching browser downloads
 
 chrome.downloads.onCreated.addListener(async (item) => {
@@ -176,21 +210,32 @@ chrome.webRequest.onHeadersReceived.addListener(async (d) => {
 
   const header = (n) => (d.responseHeaders || []).find((h) => h.name.toLowerCase() === n)?.value || "";
   const type = header("content-type").toLowerCase();
-  const isMedia = type.startsWith("video/") || type.startsWith("audio/") || MEDIA_EXT.test(d.url);
-  if (!isMedia || type.includes("mpegurl") || /\.m3u8|\.mpd/i.test(d.url)) return; // streaming playlists can't be saved as one file
+  const isHls = type.includes("mpegurl") || /\.m3u8(\?|#|$)/i.test(d.url);
+  const isMedia = isHls || type.startsWith("video/") || type.startsWith("audio/") || MEDIA_EXT.test(d.url);
+  if (!isMedia || /\.mpd(\?|#|$)/i.test(d.url) || /\.(ts|m4s)(\?|#|$)/i.test(d.url)) return; // DASH manifests and stream parts aren't offered
 
   // total size: Content-Range "bytes a-b/total" for partial responses, otherwise Content-Length
   const range = header("content-range").match(/\/(\d+)$/);
   const size = range ? Number(range[1]) : Number(header("content-length")) || 0;
-  if (size && size < MIN_MEDIA_BYTES) return;
+  if (!isHls && size && size < MIN_MEDIA_BYTES) return;
 
   const base = d.url.split("#")[0];
-  const list = await mediaFor(d.tabId);
-  if (list.some((m) => m.url === base)) return;
-  list.unshift({ url: base, type: type.split(";")[0] || extOf(base), size, time: Date.now() });
-  await chrome.storage.session.set({ [mediaKey(d.tabId)]: list.slice(0, 30) });
-  updateBadge(d.tabId);
+  const entry = { url: base, type: type.split(";")[0] || extOf(base), size: isHls ? 0 : size, kind: isHls ? "hls" : type.startsWith("audio") || /\.(mp3|m4a|aac|ogg|oga|opus|wav|flac)(\?|$)/i.test(base) ? "audio" : "video", time: Date.now() };
+  await addMedia(d.tabId, entry);
 }, { urls: ["<all_urls>"], types: ["media", "xmlhttprequest", "other", "object"] }, ["responseHeaders"]);
+
+// Several requests can finish at once; adding one at a time keeps them from overwriting each other.
+let mediaQueue = Promise.resolve();
+function addMedia(tabId, entry) {
+  mediaQueue = mediaQueue.then(async () => {
+    const list = await mediaFor(tabId);
+    if (list.some((m) => m.url === entry.url)) return;
+    list.unshift(entry);
+    await chrome.storage.session.set({ [mediaKey(tabId)]: list.slice(0, 30) });
+    updateBadge(tabId);
+  }).catch(() => {});
+  return mediaQueue;
+}
 
 // forget a tab's media when it navigates or closes
 chrome.tabs.onUpdated.addListener(async (tabId, change) => {
@@ -200,6 +245,28 @@ chrome.tabs.onUpdated.addListener(async (tabId, change) => {
   }
 });
 chrome.tabs.onRemoved.addListener((tabId) => chrome.storage.session.remove(mediaKey(tabId)));
+
+// ---------------------------------------------------------------- media names
+
+function mediaName(m, title) {
+  if (m.kind !== "hls") {
+    try {
+      const last = decodeURIComponent(new URL(m.url).pathname.split("/").pop() || "");
+      if (/\.[a-z0-9]{2,4}$/i.test(last)) return last;
+    } catch (_) {}
+  }
+  const ext = m.kind === "hls" ? "mp4" : m.kind === "audio" ? "mp3" : ((m.type || "").split("/")[1] || "mp4").replace("x-matroska", "mkv");
+  const base = (title || "video").replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 90) || "video";
+  return `${base}.${ext}`;
+}
+
+function describe(list, title) {
+  return list.map((m) => ({
+    ...m,
+    name: mediaName(m, title),
+    label: m.kind === "hls" ? chrome.i18n.getMessage("mediaHls") : m.type,
+  }));
+}
 
 // ---------------------------------------------------------------- popup messages
 
@@ -211,7 +278,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
         reply({
           running: await appIsRunning(),
           settings: await settings(),
-          media: tab ? await mediaFor(tab.id) : [],
+          media: tab ? describe(await mediaFor(tab.id), tab.title) : [],
           tabUrl: tab?.url || "",
           tabTitle: tab?.title || "",
         });
@@ -220,6 +287,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
       case "download":
         reply(await sendToApp(msg.url, msg.referrer, msg.fileName));
         break;
+      case "pageMedia": {
+        // from the floating button in a page
+        const tabId = _sender.tab?.id;
+        let list = tabId != null ? await mediaFor(tabId) : [];
+        if (msg.direct && !list.some((m) => m.url === msg.direct)) list = [{ url: msg.direct, type: "video/mp4", size: 0, kind: "video" }, ...list];
+        reply({ running: await appIsRunning(), media: describe(list, _sender.tab?.title) });
+        break;
+      }
       default:
         reply(null);
     }

@@ -17,10 +17,6 @@ dotnet publish SwiftGet\SwiftGet.csproj -c Release -r win-x64 --self-contained `
     -p:Version=$Version -o $app
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
 
-Write-Host "Creating portable zip..." -ForegroundColor Cyan
-$zip = Join-Path $root "dist\SwiftGet-$Version-portable.zip"
-if (Test-Path $zip) { Remove-Item $zip }
-Compress-Archive -Path "$app\*" -DestinationPath $zip
 
 Write-Host "Packaging the browser extension for the Chrome Web Store / Edge Add-ons..." -ForegroundColor Cyan
 $pack = Join-Path ([IO.Path]::GetTempPath()) "swiftget-extension-pack"
@@ -34,8 +30,28 @@ $manifest.version = $Version
 $extZip = Join-Path $root "dist\SwiftGet-Extension-$Version.zip"
 if (Test-Path $extZip) { Remove-Item $extZip }
 Compress-Archive -Path "$pack\*" -DestinationPath $extZip
+
+Write-Host "Packaging the Firefox version of the extension..." -ForegroundColor Cyan
+# Firefox runs the background as a script (not a service worker) and needs its own add-on ID
+$manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+$manifest.background = [pscustomobject]@{ scripts = @("background.js") }
+$manifest.PSObject.Properties.Remove("minimum_chrome_version")
+$manifest | Add-Member -NotePropertyName browser_specific_settings -NotePropertyValue ([pscustomobject]@{
+    gecko = [pscustomobject]@{ id = "swiftget@emadnajafi.github.io"; strict_min_version = "121.0" } }) -Force
+[IO.File]::WriteAllText($manifestPath, ($manifest | ConvertTo-Json -Depth 10), (New-Object System.Text.UTF8Encoding $false))
+$ffZip = Join-Path $root "dist\SwiftGet-Extension-Firefox-$Version.zip"
+if (Test-Path $ffZip) { Remove-Item $ffZip }
+Compress-Archive -Path "$pack\*" -DestinationPath $ffZip
+# the app ships the Firefox copy next to the Chrome one
+$ffDir = Join-Path $app "extension-firefox"
+if (Test-Path $ffDir) { Remove-Item $ffDir -Recurse -Force }
+Copy-Item $pack $ffDir -Recurse
 Remove-Item $pack -Recurse -Force
 
+Write-Host "Creating portable zip..." -ForegroundColor Cyan
+$zip = Join-Path $root "dist\SwiftGet-$Version-portable.zip"
+if (Test-Path $zip) { Remove-Item $zip }
+Compress-Archive -Path "$app\*" -DestinationPath $zip
 $iscc = @(
     "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe",
     "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",

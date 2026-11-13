@@ -18,20 +18,38 @@
 
 <p align="center"><img src="docs/screenshot-progress.png" width="420" alt="Download progress window">&nbsp;<img src="docs/screenshot-scheduler.png" width="520" alt="Scheduler and queues"></p>
 
+<p align="center"><img src="docs/screenshot-links.png" width="640" alt="Link picker for batch downloads, page links and the site grabber"></p>
+
 ## Features
 
-- **Multi-connection downloads** – each file is split into parts that download in parallel (8 connections by default, up to 32). When a connection finishes early it takes over half of the largest remaining part, so every connection stays busy until the end.
-- **Pause and resume** – continue after a pause, a dropped connection or a restart, from exactly where you stopped.
-- **Automatic retries** on network errors.
-- **Queues and scheduler** – create as many queues as you like, each with its own start time (once on a date or daily on chosen days), stop time, number of files downloading at once and file order. When a queue finishes SwiftGet can exit, sleep, hibernate or shut down the PC (with a 30-second countdown you can cancel).
-- **Speed limiter** for all downloads.
-- **Automatic categories** – Video, Music, Documents, Compressed, Programs, Images – each saved in its own folder.
-- **Browser integration** for Chrome, Edge, Brave and Opera. Downloads are caught automatically and sent with the browser's cookies and referrer, so downloads that need a login work too. Right-click any link → *Download with SwiftGet*.
-- **Modern Windows 11 look** with light and dark themes that follow your Windows setting.
-- **English and Persian (فارسی)** interface with full right-to-left layout and Solar Hijri dates.
-- Notification-area icon, completion pop-up, search and sorting.
-- Uses your Windows proxy settings. No telemetry and no ads.
+**Downloading**
+- **Multi-connection downloads** (up to 32) with dynamic splitting, **pause and resume**, automatic retries and a speed limiter.
+- **HTTP, HTTPS and FTP**, including resume and multiple connections over FTP.
+- **Video streams (HLS / m3u8)**: picks the best quality, decrypts AES-128 streams and joins the parts. With [ffmpeg](https://ffmpeg.org) installed, streams are saved as MP4 and separate audio is merged in; without it they're saved as `.ts`.
+- **Refresh download address**: when a link expires, paste a new one (or click it again in the browser) and the download continues where it stopped.
+- **Batch download**: `file[001-100].zip`, `part[a-f].rar` or `file*.zip` with a range.
+- **Site grabber**: explore a website and collect the files it links to.
+- **Clipboard monitor**: copy a link to a file and SwiftGet offers to download it.
 
+**Organizing**
+- **Queues and scheduler**: as many queues as you like, each with its own start time (once or daily), stop time, parallel downloads and file order. When a queue finishes SwiftGet can exit, sleep, hibernate or shut down the PC (with a cancellable countdown).
+- **Synchronization queues**: check finished files for changes on the server and download them again.
+- **Automatic categories**, category tree, search, sortable table, import and export of the download list.
+
+**Browser integration** (Chrome, Edge, Brave, Opera, Firefox)
+- Downloads are caught automatically and sent with cookies and referrer, so downloads that need a login work.
+- A **"Download this video" button** appears over videos; the toolbar popup lists every video and audio file found on the page.
+- Right-click → **Download with SwiftGet** or **Download all links with SwiftGet**.
+
+**Connection and safety**
+- Windows proxy, no proxy, or your own proxy (with user name and password).
+- **Site logins** for sites and FTP servers that need a user name and password (stored encrypted with Windows DPAPI).
+- Downloaded files are marked as coming from the internet (like browsers do), and can be scanned with Microsoft Defender or another antivirus.
+
+**App**
+- Classic, familiar layout with a menu bar, big-icon toolbar and progress window with per-connection details.
+- English and Persian with full right-to-left layout and Solar Hijri dates; light and dark themes.
+- Starts with Windows, lives in the notification area, and **updates itself** from GitHub Releases.
 <p align="center"><img src="docs/screenshot-dark-fa.png" width="760" alt="SwiftGet in Persian with the dark theme"></p>
 
 ## Install
@@ -47,11 +65,13 @@ Requirements: Windows 10 (1809) or Windows 11, 64-bit. Nothing else needs to be 
 
 The extension sends browser downloads to SwiftGet, adds **Download with SwiftGet** to the right-click menu, and lists the **videos and audio** playing on a page so you can save them with one click. You can choose which file types to catch, a minimum size and sites to skip.
 
-1. In SwiftGet open **Options → Browser** and click **Add to Chrome** (or Edge, Brave, Opera).
+1. In SwiftGet open **Options → Browser** and click **Add to Chrome** (or Edge, Brave, Opera, Firefox).
 2. A short guide opens in the browser and the extension folder opens in Explorer. The address of the extensions page is already copied, so paste it into the address bar.
 3. Turn on **Developer mode** and drag the `extension` folder onto the page.
 
 SwiftGet shows **The extension is connected** within a minute. When SwiftGet isn't running, downloads simply stay in the browser.
+
+Firefox loads it as a temporary add-on (until Firefox restarts) until the Firefox version is signed by Mozilla, which is free; see [docs/PUBLISHING.md](docs/PUBLISHING.md).
 
 > Once the extension is published in the Chrome Web Store and Edge Add-ons, the installer adds it automatically. See [docs/PUBLISHING.md](docs/PUBLISHING.md).
 
@@ -108,6 +128,10 @@ Add a table to `SwiftGet/Core/Strings.cs` with the same keys as `En`, then add i
 - **دانلود چندبخشی**: هر فایل به چند بخش تقسیم می‌شود و بخش‌ها هم‌زمان دانلود می‌شوند (پیش‌فرض ۸ اتصال، تا ۳۲ اتصال).
 - **توقف و ادامهٔ دانلود** پس از قطع اینترنت، توقف یا خاموش شدن سیستم.
 - **تلاش دوبارهٔ خودکار** هنگام خطای شبکه.
+- **ویدیوهای استریم (HLS / m3u8)** با انتخاب بهترین کیفیت و پشتیبانی از رمزنگاری AES-128.
+- **به‌روزرسانی آدرس دانلود** برای لینک‌های منقضی‌شده، **دانلود گروهی**، **جمع‌آوری فایل از سایت**، **زیر نظر گرفتن کلیپ‌بورد** و پشتیبانی **FTP**.
+- **دکمهٔ «دانلود این ویدیو»** روی ویدیوهای سایت‌ها و **دانلود همهٔ لینک‌های صفحه**.
+- **پروکسی دلخواه**، **نام کاربری سایت‌ها**، اسکن با ضدویروس و **به‌روزرسانی خودکار برنامه**.
 - **چند صف و زمان‌بندی**: هر تعداد صف با ساعت شروع (یک بار یا روزانه) و توقف، تعداد دانلود هم‌زمان و ترتیب فایل‌ها؛ و پس از پایان صف: بستن برنامه، Sleep، Hibernate یا خاموش کردن کامپیوتر.
 - **محدودیت سرعت**.
 - **دسته‌بندی خودکار** فایل‌ها (ویدیو، موسیقی، اسناد، فشرده، برنامه‌ها، تصاویر).

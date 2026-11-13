@@ -1,0 +1,49 @@
+<Window x:Class="SwiftGet.Views.GrabberWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l="clr-namespace:SwiftGet.Core"
+        Title="{l:Tr GrabTitle}" Width="640" SizeToContent="Height" ResizeMode="NoResize"
+        FlowDirection="{Binding Flow, Source={x:Static l:Loc.I}}"
+        FontFamily="{StaticResource UiFont}" FontSize="13"
+        Background="{DynamicResource Bg}" Foreground="{DynamicResource Text}"
+        WindowStartupLocation="CenterOwner">
+    <StackPanel Margin="24,20,24,22">
+        <StackPanel Orientation="Horizontal">
+            <Border Style="{StaticResource IconTile}" Width="44" Height="44">
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xE774;" FontSize="20" Foreground="{DynamicResource Accent}" HorizontalAlignment="Center"/>
+            </Border>
+            <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                <TextBlock Text="{l:Tr GrabTitle}" Style="{StaticResource H2}" FontSize="18"/>
+                <TextBlock Text="{l:Tr GrabSubtitle}" Style="{StaticResource Caption}" Margin="0,2,0,0"/>
+            </StackPanel>
+        </StackPanel>
+
+        <TextBlock Text="{l:Tr GrabStart}" Style="{StaticResource FieldLabel}" Margin="0,20,0,6"/>
+        <TextBox x:Name="UrlBox" Height="36" VerticalContentAlignment="Center" FlowDirection="LeftToRight"/>
+
+        <TextBlock Text="{l:Tr GrabTypes}" Style="{StaticResource FieldLabel}"/>
+        <TextBox x:Name="TypesBox" Height="36" VerticalContentAlignment="Center" FlowDirection="LeftToRight"
+                 Text="zip rar 7z iso exe msi apk mp4 mkv avi mp3 flac pdf epub"/>
+
+        <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+            <TextBlock Text="{l:Tr GrabDepth}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <ComboBox x:Name="DepthBox" Width="70"/>
+            <TextBlock Text="{l:Tr GrabMaxPages}" VerticalAlignment="Center" Margin="20,0,8,0"/>
+            <ComboBox x:Name="PagesBox" Width="90"/>
+            <CheckBox x:Name="SameSiteBox" Content="{l:Tr GrabSameSite}" IsChecked="True" Margin="20,0,0,0"
+                      VerticalAlignment="Center" Foreground="{DynamicResource Text}"/>
+        </StackPanel>
+
+        <Border Style="{StaticResource Card}" Margin="0,16,0,0" Padding="14,10">
+            <StackPanel>
+                <TextBlock x:Name="StatusText" Text="{l:Tr GrabReady}"/>
+                <ProgressBar x:Name="Busy" Style="{StaticResource ThinProgress}" IsIndeterminate="True" Margin="0,8,0,0" Visibility="Collapsed"/>
+            </StackPanel>
+        </Border>
+
+        <DockPanel Margin="0,20,0,0" LastChildFill="False">
+            <Button x:Name="StartButton" DockPanel.Dock="Right" Style="{StaticResource AccentButton}" Content="{l:Tr GrabRun}" IsDefault="True" Click="Start_Click"/>
+            <Button x:Name="CancelButton" DockPanel.Dock="Left" Style="{StaticResource SecondaryButton}" Content="{l:Tr Cancel}" Click="Cancel_Click"/>
+        </DockPanel>
+    </StackPanel>
+</Window>

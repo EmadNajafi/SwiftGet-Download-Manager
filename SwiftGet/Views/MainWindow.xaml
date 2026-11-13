@@ -148,6 +148,69 @@
     </Window.Resources>
 
     <DockPanel>
+        <!-- ============================ menu bar ============================ -->
+        <Menu DockPanel.Dock="Top" Background="{DynamicResource Surface}" Foreground="{DynamicResource Text}" Padding="4,2">
+            <MenuItem Header="{l:Tr MnTasks}">
+                <MenuItem Header="{l:Tr AddUrl}" InputGestureText="Ctrl+N" Click="AddUrl_Click">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE710;" FontSize="14"/></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{l:Tr MnBatch}" InputGestureText="Ctrl+B" Click="Batch_Click">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE8B3;" FontSize="14"/></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{l:Tr MnGrabber}" Click="Grabber_Click">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE774;" FontSize="14"/></MenuItem.Icon>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="{l:Tr MnImport}" Click="Import_Click">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE8B5;" FontSize="14"/></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{l:Tr MnExport}" Click="Export_Click">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xEDE1;" FontSize="14"/></MenuItem.Icon>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="{l:Tr TrayExit}" Click="Exit_Click"/>
+            </MenuItem>
+            <MenuItem Header="{l:Tr MnDownloads}">
+                <MenuItem Header="{l:Tr MnResumeAll}" Click="ResumeAll_Click">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE768;" FontSize="14"/></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{l:Tr StopAll}" Click="PauseAll_Click">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE71A;" FontSize="14"/></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{l:Tr MnRefresh}" Click="Refresh_Click">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE72C;" FontSize="14"/></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{l:Tr MnDeleteCompleted}" Click="DeleteCompleted_Click">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE74D;" FontSize="14"/></MenuItem.Icon>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="{l:Tr Scheduler}" Click="Schedule_Click">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE787;" FontSize="14"/></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{l:Tr MnSpeedLimit}" Click="SpeedLimit_Click">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xEC4A;" FontSize="14"/></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{l:Tr Options}" Click="Settings_Click">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE713;" FontSize="14"/></MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
+            <MenuItem Header="{l:Tr MnHelp}">
+                <MenuItem Header="{l:Tr MnBrowser}" Click="BrowserSetup_Click">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xEA86;" FontSize="14"/></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{l:Tr MnCheckUpdates}" Click="CheckUpdates_Click">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE895;" FontSize="14"/></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{l:Tr AboutGithub}" Click="Project_Click">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE774;" FontSize="14"/></MenuItem.Icon>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="{l:Tr SetAbout}" Click="About_Click">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE946;" FontSize="14"/></MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
+        </Menu>
+
         <!-- ============================ toolbar ============================ -->
         <Border DockPanel.Dock="Top" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Border}"
                 BorderThickness="0,0,0,1" Padding="8,6">
@@ -354,6 +417,9 @@
                             <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE8FD;" FontSize="14"/></MenuItem.Icon>
                         </MenuItem>
                         <MenuItem Header="{l:Tr MenuRemoveQueue}" Click="RemoveFromQueue_Click"/>
+                        <MenuItem Header="{l:Tr MnRefresh}" Click="Refresh_Click">
+                            <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE72C;" FontSize="14"/></MenuItem.Icon>
+                        </MenuItem>
                         <Separator/>
                         <MenuItem Header="{l:Tr MenuCopyLink}" Click="CopyLink_Click">
                             <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE71B;" FontSize="14"/></MenuItem.Icon>

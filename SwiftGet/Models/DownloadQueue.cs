@@ -35,6 +35,11 @@ public sealed class DownloadQueue : INotifyPropertyChanged
 
     public QueueFinishAction FinishAction { get; set; } = QueueFinishAction.None;
 
+    /// <summary>Synchronization: check finished files for changes on the server and download them again.</summary>
+    public bool SyncEnabled { get; set; }
+    public int SyncIntervalHours { get; set; } = 24;
+    public DateTime LastSync { get; set; }
+
     // ---- runtime only
     [JsonIgnore] public bool IsMain => Id == MainId;
     [JsonIgnore] public string DisplayName => IsMain ? Loc.T("MainQueue") : Name;

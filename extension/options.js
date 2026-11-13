@@ -6,7 +6,7 @@ const DEFAULT_TYPES =
   "bin img torrent";
 
 const DEFAULTS = {
-  enabled: true, contextMenu: true, detectMedia: true,
+  enabled: true, contextMenu: true, detectMedia: true, floatingButton: true,
   extensions: DEFAULT_TYPES, minSizeKB: 0, excludedSites: "", port: 47321,
 };
 
@@ -22,6 +22,7 @@ async function load() {
   $("enabled").checked = s.enabled;
   $("contextMenu").checked = s.contextMenu;
   $("detectMedia").checked = s.detectMedia;
+  $("floatingButton").checked = s.floatingButton;
   $("extensions").value = s.extensions;
   $("minSizeKB").value = s.minSizeKB;
   $("excludedSites").value = s.excludedSites;
@@ -36,6 +37,7 @@ $("save").addEventListener("click", async () => {
     enabled: $("enabled").checked,
     contextMenu: $("contextMenu").checked,
     detectMedia: $("detectMedia").checked,
+    floatingButton: $("floatingButton").checked,
     extensions: $("extensions").value.trim().replace(/\s+/g, " "),
     minSizeKB: Math.max(0, Number($("minSizeKB").value) || 0),
     excludedSites: $("excludedSites").value.trim(),

@@ -2,6 +2,11 @@
   "extName": { "message": "SwiftGet Download Manager Integration" },
   "extDescription": { "message": "دانلودهای مرورگر را به مدیریت دانلود رایگان SwiftGet می‌فرستد و ویدیو و صدای صفحه‌ها را پیدا می‌کند." },
   "menuDownload": { "message": "دانلود با SwiftGet" },
+  "menuDownloadAll": { "message": "دانلود همهٔ لینک‌ها با SwiftGet" },
+  "btnDownloadVideo": { "message": "دانلود این ویدیو" },
+  "btnNoMedia": { "message": "ویدیو را چند لحظه پخش کنید و دوباره بزنید." },
+  "mediaHls": { "message": "ویدیوی استریم (HLS)" },
+  "optButton": { "message": "نمایش دکمهٔ «دانلود این ویدیو» روی ویدیوها" },
 
   "popupConnected": { "message": "به SwiftGet وصل است" },
   "popupDisconnected": { "message": "SwiftGet اجرا نشده است" },

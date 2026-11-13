@@ -84,7 +84,7 @@
   const lang = q.get("lang") === "fa" ? "fa" : "en";
   const browser = (q.get("browser") || "chrome").toLowerCase();
   const scheme = { edge: "edge", brave: "brave", opera: "opera" }[browser] || "chrome";
-  const address = scheme + "://extensions";
+  const address = browser === "firefox" ? "about:debugging#/runtime/this-firefox" : scheme + "://extensions";
   const T = {
     en: {
       title: "Add SwiftGet to your browser", subtitle: "Three quick steps. You only do this once.",
@@ -105,6 +105,18 @@
       done: "تمام! آیکن SwiftGet در نوار ابزار مرورگر نمایش داده می‌شود و تا یک دقیقه در SwiftGet پیام «افزونه وصل است» دیده می‌شود."
     }
   }[lang];
+  if (browser === "firefox") Object.assign(T, {
+    en: {
+      s2: "Click \"Load Temporary Add-on…\"", s2p: "It's on the \"This Firefox\" page that just opened.",
+      s3: "Choose the manifest.json file", s3p: "SwiftGet opened the \"extension-firefox\" folder in Explorer with manifest.json selected. Pick that file in the window Firefox shows.",
+      done: "Firefox removes temporary add-ons when it closes. For a permanent install, the Firefox version needs Mozilla's free signature (see docs/PUBLISHING.md on the project page)."
+    },
+    fa: {
+      s2: "روی Load Temporary Add-on بزنید", s2p: "این دکمه در صفحهٔ This Firefox است که الان باز شد.",
+      s3: "فایل manifest.json را انتخاب کنید", s3p: "SwiftGet پوشهٔ extension-firefox را در Explorer باز کرده و manifest.json انتخاب شده است. همین فایل را در پنجرهٔ Firefox انتخاب کنید.",
+      done: "Firefox افزونه‌های موقت را با بسته شدن حذف می‌کند. برای نصب دائمی، نسخهٔ Firefox باید امضای رایگان Mozilla را داشته باشد (راهنما در docs/PUBLISHING.md صفحهٔ پروژه)."
+    }
+  }[lang]);
   document.documentElement.lang = lang;
   document.documentElement.dir = lang === "fa" ? "rtl" : "ltr";
   document.title = T.title;

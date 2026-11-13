@@ -86,6 +86,13 @@
                                 <CheckBox x:Name="ShowCompleteBox" Style="{StaticResource Check}" Content="{l:Tr SetShowComplete}"/>
                             </StackPanel>
                         </Border>
+                        <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                            <StackPanel>
+                                <CheckBox x:Name="ClipboardBox" Style="{StaticResource Check}" Content="{l:Tr SetClipboard}"/>
+                                <TextBlock Text="{l:Tr SetClipboardTypes}" Style="{StaticResource FieldLabel}"/>
+                                <TextBox x:Name="ClipboardTypesBox" Height="34" VerticalContentAlignment="Center" FlowDirection="LeftToRight"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <!-- Connections -->
@@ -106,6 +113,95 @@
                                 <TextBlock Text="{l:Tr SetPort}" Style="{StaticResource FieldLabel}"/>
                                 <TextBox x:Name="PortBox" Style="{StaticResource SmallBox}"/>
                             </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="{l:Tr SetProxy}" Style="{StaticResource FieldLabel}" Margin="2,18,0,8"/>
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <RadioButton x:Name="ProxySystem" GroupName="proxy" Content="{l:Tr ProxySystem}" Foreground="{DynamicResource Text}" Margin="0,2" Click="Proxy_Changed"/>
+                                <RadioButton x:Name="ProxyNone" GroupName="proxy" Content="{l:Tr ProxyNone}" Foreground="{DynamicResource Text}" Margin="0,6,0,2" Click="Proxy_Changed"/>
+                                <RadioButton x:Name="ProxyManual" GroupName="proxy" Content="{l:Tr ProxyManual}" Foreground="{DynamicResource Text}" Margin="0,6,0,2" Click="Proxy_Changed"/>
+                                <Grid x:Name="ProxyFields" Margin="26,10,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="10"/>
+                                        <ColumnDefinition Width="90"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition/><RowDefinition/>
+                                    </Grid.RowDefinitions>
+                                    <TextBox x:Name="ProxyHostBox" Height="34" VerticalContentAlignment="Center" FlowDirection="LeftToRight" ToolTip="{l:Tr ProxyHost}"/>
+                                    <TextBox x:Name="ProxyPortBox" Grid.Column="2" Height="34" VerticalContentAlignment="Center" FlowDirection="LeftToRight" ToolTip="{l:Tr ProxyPort}"/>
+                                    <TextBox x:Name="ProxyUserBox" Grid.Row="1" Height="34" Margin="0,8,0,0" VerticalContentAlignment="Center" FlowDirection="LeftToRight" ToolTip="{l:Tr LoginUser}"/>
+                                    <PasswordBox x:Name="ProxyPassBox" Grid.Row="1" Grid.Column="2" Height="34" Margin="0,8,0,0" VerticalContentAlignment="Center" ToolTip="{l:Tr LoginPassword}"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="{l:Tr SetLogins}" Style="{StaticResource FieldLabel}" Margin="2,18,0,4"/>
+                        <TextBlock Text="{l:Tr SetLoginsHint}" Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="2,0,0,8"/>
+                        <Border Style="{StaticResource Card}" Padding="10">
+                            <StackPanel>
+                                <StackPanel x:Name="LoginsPanel"/>
+                                <Grid Margin="0,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="2*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="1.4*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="1.4*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="LoginHostBox" Height="34" VerticalContentAlignment="Center" FlowDirection="LeftToRight" ToolTip="{l:Tr LoginHost}"/>
+                                    <TextBox x:Name="LoginUserBox" Grid.Column="2" Height="34" VerticalContentAlignment="Center" FlowDirection="LeftToRight" ToolTip="{l:Tr LoginUser}"/>
+                                    <PasswordBox x:Name="LoginPassBox" Grid.Column="4" Height="34" VerticalContentAlignment="Center" ToolTip="{l:Tr LoginPassword}"/>
+                                    <Button Grid.Column="6" Style="{StaticResource SecondaryButton}" MinWidth="0" Padding="12,0" Content="{l:Tr LoginAdd}" Click="AddLogin_Click"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Safety & updates -->
+                    <StackPanel x:Name="PageSafety" Visibility="Collapsed">
+                        <TextBlock Text="{l:Tr SetSafety}" Style="{StaticResource PageTitle}"/>
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <CheckBox x:Name="MotwBox" Style="{StaticResource Check}" Content="{l:Tr SetMotw}"/>
+                                <TextBlock Text="{l:Tr SetMotwHint}" Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="28,0,0,8"/>
+                                <CheckBox x:Name="ScanBox" Style="{StaticResource Check}" Content="{l:Tr SetScan}"/>
+                                <TextBlock Text="{l:Tr SetScanner}" Style="{StaticResource Caption}" Margin="28,6,0,0"/>
+                                <Grid Margin="28,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="ScannerBox" Height="34" VerticalContentAlignment="Center" FlowDirection="LeftToRight" ToolTip="{l:Tr SetScanner}"/>
+                                    <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Content="{l:Tr Browse}" Click="BrowseScanner_Click"/>
+                                </Grid>
+                                <TextBlock Text="{l:Tr SetScannerHint}" Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="28,6,0,0"/>
+                                <TextBox x:Name="ScannerArgsBox" Height="34" Margin="28,8,0,0" VerticalContentAlignment="Center" FlowDirection="LeftToRight" ToolTip="{l:Tr SetScannerArgs}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="{l:Tr SetStreams}" Style="{StaticResource FieldLabel}" Margin="2,18,0,8"/>
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock x:Name="FfmpegStatus" TextWrapping="Wrap"/>
+                                <Grid Margin="0,10,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="FfmpegBox" Height="34" VerticalContentAlignment="Center" FlowDirection="LeftToRight" ToolTip="ffmpeg.exe"/>
+                                    <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Content="{l:Tr Browse}" Click="BrowseFfmpeg_Click"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="{l:Tr SetUpdates}" Style="{StaticResource FieldLabel}" Margin="2,18,0,8"/>
+                        <Border Style="{StaticResource Card}">
+                            <CheckBox x:Name="UpdatesBox" Style="{StaticResource Check}" Content="{l:Tr SetCheckUpdates}"/>
                         </Border>
                     </StackPanel>
 

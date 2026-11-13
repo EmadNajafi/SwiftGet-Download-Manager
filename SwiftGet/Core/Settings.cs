@@ -35,6 +35,56 @@ public sealed class AppSettings
     /// <summary>"System", "Light" or "Dark".</summary>
     public string Theme { get; set; } = "System";
     public ScheduleSettings Schedule { get; set; } = new();
+
+    // ---- connection
+    /// <summary>"System" (Windows settings), "None" or "Manual".</summary>
+    public string ProxyMode { get; set; } = "System";
+    public string ProxyHost { get; set; } = "";
+    public int ProxyPort { get; set; } = 8080;
+    public string ProxyUser { get; set; } = "";
+    /// <summary>DPAPI-encrypted (see <see cref="Secret"/>).</summary>
+    public string ProxyPassword { get; set; } = "";
+    public List<SiteLogin> SiteLogins { get; set; } = new();
+
+    // ---- clipboard
+    public bool MonitorClipboard { get; set; } = true;
+    public string ClipboardExtensions { get; set; } =
+        "zip rar 7z tar gz iso exe msi apk dmg mp4 mkv avi mov webm mp3 flac m4a pdf epub m3u8";
+
+    // ---- safety
+    /// <summary>Mark downloaded files as coming from the internet, like browsers do (Windows SmartScreen checks them).</summary>
+    public bool MarkOfTheWeb { get; set; } = true;
+    public bool ScanAfterDownload { get; set; }
+    /// <summary>Empty = Microsoft Defender. Otherwise an antivirus program; %1 in the arguments is the file.</summary>
+    public string ScannerPath { get; set; } = "";
+    public string ScannerArgs { get; set; } = "\"%1\"";
+
+    // ---- streams
+    /// <summary>ffmpeg.exe for converting video streams to MP4 (optional; found automatically on PATH).</summary>
+    public string FfmpegPath { get; set; } = "";
+
+    // ---- updates
+    public bool CheckForUpdates { get; set; } = true;
+    public DateTime LastUpdateCheck { get; set; }
+    public string SkippedVersion { get; set; } = "";
+}
+
+/// <summary>User name and password for a site (HTTP authentication or FTP).</summary>
+public sealed class SiteLogin
+{
+    /// <summary>Host name, e.g. "files.example.com" or "*.example.com".</summary>
+    public string Host { get; set; } = "";
+    public string User { get; set; } = "";
+    /// <summary>DPAPI-encrypted.</summary>
+    public string Password { get; set; } = "";
+
+    public bool Matches(Uri uri)
+    {
+        var h = Host.Trim().ToLowerInvariant();
+        var host = uri.Host.ToLowerInvariant();
+        if (h.StartsWith("*.")) return host == h[2..] || host.EndsWith(h[1..]);
+        return host == h;
+    }
 }
 
 /// <summary>JSON files under %APPDATA%\SwiftGet.</summary>

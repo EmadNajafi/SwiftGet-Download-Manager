@@ -88,6 +88,160 @@ public partial class MainWindow : Window
 
         SetupTray();
         UpdateStatus();
+        StartClipboardMonitor();
+    }
+
+    // ------------------------------------------------------------------ clipboard monitor
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    static extern bool AddClipboardFormatListener(IntPtr hwnd);
+    const int WM_CLIPBOARDUPDATE = 0x031D;
+    string _lastClipboard = "";
+    DateTime _lastClipboardTime;
+
+    /// <summary>Watches the clipboard; a copied link to a file opens the "New download" window (like IDM).</summary>
+    void StartClipboardMonitor()
+    {
+        var hwnd = new System.Windows.Interop.WindowInteropHelper(this).EnsureHandle();
+        System.Windows.Interop.HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
+        AddClipboardFormatListener(hwnd);
+    }
+
+    IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == WM_CLIPBOARDUPDATE && _m.Settings.MonitorClipboard)
+            Dispatcher.BeginInvoke(OnClipboardChanged, DispatcherPriority.Background);
+        return IntPtr.Zero;
+    }
+
+    void OnClipboardChanged()
+    {
+        string text;
+        try { text = Clipboard.ContainsText() ? Clipboard.GetText().Trim() : ""; } catch { return; }
+        if (text.Length == 0 || text.Length > 2000 || text.Contains('\n')) return;
+        if (text == _lastClipboard && DateTime.Now - _lastClipboardTime < TimeSpan.FromSeconds(30)) return;
+        if (!Uri.TryCreate(text, UriKind.Absolute, out var uri) || !(uri.Scheme is "http" or "https" or "ftp")) return;
+        var ext = Path.GetExtension(uri.AbsolutePath).TrimStart('.').ToLowerInvariant();
+        var wanted = _m.Settings.ClipboardExtensions.Split(new[] { ' ', ',' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(x => x.TrimStart('.').ToLowerInvariant());
+        if (ext.Length == 0 || !wanted.Contains(ext)) return;
+        if (_m.Items.Any(i => i.Url == text)) return;
+        _lastClipboard = text;
+        _lastClipboardTime = DateTime.Now;
+        var w = new AddDownloadWindow(_m, text) { Topmost = true };
+        w.Show();
+        w.Activate();
+    }
+
+    // ------------------------------------------------------------------ menu commands
+
+    void Batch_Click(object sender, RoutedEventArgs e) => new BatchWindow(_m) { Owner = IsVisible ? this : null }.ShowDialog();
+
+    void Grabber_Click(object sender, RoutedEventArgs e)
+    {
+        string? url = null;
+        try { var c = Clipboard.GetText().Trim(); if (Uri.TryCreate(c, UriKind.Absolute, out var u) && u.Scheme.StartsWith("http")) url = c; } catch { }
+        new GrabberWindow(_m, url) { Owner = IsVisible ? this : null }.ShowDialog();
+    }
+
+    void Import_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog { Filter = Loc.T("ImportFilter") };
+        if (dlg.ShowDialog(this) != true) return;
+        try
+        {
+            if (dlg.FileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+            {
+                int added = _m.ImportList(dlg.FileName);
+                Dialogs.Info(this, Loc.F("ImportDone", added));
+            }
+            else
+            {
+                var links = File.ReadAllLines(dlg.FileName).Select(l => l.Trim()).Where(l => l.Length > 0)
+                    .Select(l => new LinkCandidate(l)).ToList();
+                new LinksWindow(_m, links, Loc.T("MnImport"), Path.GetFileName(dlg.FileName)) { Owner = this }.Show();
+            }
+        }
+        catch (Exception ex) { Dialogs.Info(this, ex.Message, warning: true); }
+    }
+
+    void Export_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.SaveFileDialog { Filter = Loc.T("ExportFilter"), FileName = "SwiftGet-downloads" };
+        if (dlg.ShowDialog(this) != true) return;
+        try
+        {
+            var items = Selected().Count > 1 ? Selected() : _m.Items.ToList();
+            if (dlg.FilterIndex == 2 || dlg.FileName.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+                File.WriteAllLines(dlg.FileName, items.Select(i => i.Url));
+            else
+                _m.ExportList(dlg.FileName, items);
+            Dialogs.Info(this, Loc.F("ExportDone", items.Count));
+        }
+        catch (Exception ex) { Dialogs.Info(this, ex.Message, warning: true); }
+    }
+
+    void ResumeAll_Click(object sender, RoutedEventArgs e)
+    {
+        foreach (var i in _m.Items.Where(i => i.Status is DownloadStatus.Paused or DownloadStatus.Error or DownloadStatus.Queued).ToList())
+            _m.Start(i);
+    }
+
+    void DeleteCompleted_Click(object sender, RoutedEventArgs e)
+    {
+        var done = _m.Items.Where(i => i.Status == DownloadStatus.Completed).ToList();
+        if (done.Count > 0 && Dialogs.Ask(this, Loc.F("ConfirmDeleteCompleted", done.Count)))
+            foreach (var i in done) _m.Remove(i, deleteCompletedFile: false);
+    }
+
+    void Refresh_Click(object sender, RoutedEventArgs e)
+    {
+        if (DownloadGrid.SelectedItem is not DownloadItem item || item.Status == DownloadStatus.Completed) return;
+        var w = new RefreshWindow(_m, item) { Owner = this };
+        w.WaitForBrowser += i =>
+        {
+            _pendingRefresh = i;
+            ShowBalloon(Loc.T("RefreshTitle"), Loc.F("RefreshWaiting", i.FileName));
+        };
+        w.ShowDialog();
+    }
+
+    void SpeedLimit_Click(object sender, RoutedEventArgs e) => OpenSettings(1);
+    void BrowserSetup_Click(object sender, RoutedEventArgs e) => OpenSettings(2);
+    void About_Click(object sender, RoutedEventArgs e) => OpenSettings(5);
+    void Project_Click(object sender, RoutedEventArgs e) => Shell.OpenUrl(App.ProjectUrl);
+    void Exit_Click(object sender, RoutedEventArgs e) => ExitApp();
+    async void CheckUpdates_Click(object sender, RoutedEventArgs e) => await CheckForUpdatesAsync(silent: false);
+
+    // ------------------------------------------------------------------ updates
+
+    public void ScheduleUpdateCheck()
+    {
+        if (!_m.Settings.CheckForUpdates || DateTime.Now - _m.Settings.LastUpdateCheck < TimeSpan.FromDays(1)) return;
+        var t = new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
+        t.Tick += async (_, _) => { t.Stop(); await CheckForUpdatesAsync(silent: true); };
+        t.Start();
+    }
+
+    async Task CheckForUpdatesAsync(bool silent)
+    {
+        try
+        {
+            var info = await Updater.CheckAsync(CancellationToken.None);
+            _m.Settings.LastUpdateCheck = DateTime.Now;
+            _m.ApplySettings(_m.Settings);
+            if (info == null)
+            {
+                if (!silent) Dialogs.Info(this, Loc.F("UpdNone", Updater.Current));
+                return;
+            }
+            if (silent && info.Version.ToString() == _m.Settings.SkippedVersion) return;
+            new UpdateWindow(_m, info).Show();
+        }
+        catch (Exception ex)
+        {
+            if (!silent) Dialogs.Info(this, Loc.F("UpdFailed", ex.Message), warning: true);
+        }
     }
 
     // ------------------------------------------------------------------ category tree and filter
@@ -284,8 +438,21 @@ public partial class MainWindow : Window
 
     // ------------------------------------------------------------------ browser and completion
 
+    DownloadItem? _pendingRefresh;
+
     public void HandleBrowserRequest(BridgeRequest r)
     {
+        // "Refresh download address → catch from browser": this link replaces the expired one
+        if (_pendingRefresh is { } waiting)
+        {
+            _pendingRefresh = null;
+            if (Dialogs.Ask(null, Loc.F("RefreshUseLink", waiting.FileName)))
+            {
+                _ = ApplyRefreshAsync(waiting, r);
+                return;
+            }
+        }
+
         if (_m.Settings.ShowDialogForBrowser)
         {
             var w = new AddDownloadWindow(_m, r.Url, r.Referrer, r.Cookies, r.UserAgent, r.FileName) { Topmost = true };
@@ -299,6 +466,22 @@ public partial class MainWindow : Window
             _m.StartWithProgress(item);
             if (!_m.Settings.ShowProgressWindow) ShowBalloon(Loc.T("NotifyNew"), item.FileName);
         }
+    }
+
+    async Task ApplyRefreshAsync(DownloadItem item, BridgeRequest r)
+    {
+        var error = await _m.RefreshAddressAsync(item, r.Url, r.Referrer, r.Cookies);
+        if (error != null) Dialogs.Info(null, error, warning: true);
+        else ShowBalloon(Loc.T("RefreshTitle"), Loc.F("RefreshDone", item.FileName));
+    }
+
+    /// <summary>"Download all links with SwiftGet" from the browser.</summary>
+    public void HandleBrowserLinks(BridgeLinks r)
+    {
+        var links = r.Items.Select(i => new LinkCandidate(i.Url, r.Referrer, i.Cookies, string.IsNullOrWhiteSpace(i.FileName) ? null : i.FileName));
+        var w = new LinksWindow(_m, links, Loc.T("LinksFromPage"), r.Title) { Topmost = true };
+        w.Show();
+        w.Activate();
     }
 
     void OnItemCompleted(DownloadItem item)
@@ -432,6 +615,7 @@ public partial class MainWindow : Window
     void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.N && Keyboard.Modifiers == ModifierKeys.Control) { AddUrl_Click(this, e); e.Handled = true; }
+        else if (e.Key == Key.B && Keyboard.Modifiers == ModifierKeys.Control) { Batch_Click(this, e); e.Handled = true; }
         else if (e.Key == Key.F && Keyboard.Modifiers == ModifierKeys.Control) { SearchBox.Focus(); e.Handled = true; }
         else if (e.Key == Key.Delete && DownloadGrid.IsKeyboardFocusWithin) { Delete_Click(this, e); e.Handled = true; }
         else if (e.Key == Key.Enter && DownloadGrid.IsKeyboardFocusWithin && DownloadGrid.SelectedItem is DownloadItem i)

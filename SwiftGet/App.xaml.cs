@@ -58,6 +58,8 @@ public partial class App : Application
 
         _bridge = new BrowserBridge(_manager.Settings.BridgePort);
         _bridge.DownloadRequested += r => Dispatcher.BeginInvoke(() => _main.HandleBrowserRequest(r));
+        _bridge.LinksRequested += r => Dispatcher.BeginInvoke(() => _main.HandleBrowserLinks(r));
+        _main.ScheduleUpdateCheck();
         try
         {
             _bridge.Start();

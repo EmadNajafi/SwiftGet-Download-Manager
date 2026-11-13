@@ -1,0 +1,47 @@
+<Window x:Class="SwiftGet.Views.BatchWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l="clr-namespace:SwiftGet.Core"
+        Title="{l:Tr BatchTitle}" Width="620" SizeToContent="Height" ResizeMode="NoResize"
+        FlowDirection="{Binding Flow, Source={x:Static l:Loc.I}}"
+        FontFamily="{StaticResource UiFont}" FontSize="13"
+        Background="{DynamicResource Bg}" Foreground="{DynamicResource Text}"
+        WindowStartupLocation="CenterOwner">
+    <StackPanel Margin="24,20,24,22">
+        <StackPanel Orientation="Horizontal">
+            <Border Style="{StaticResource IconTile}" Width="44" Height="44">
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xE8B3;" FontSize="20" Foreground="{DynamicResource Accent}" HorizontalAlignment="Center"/>
+            </Border>
+            <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                <TextBlock Text="{l:Tr BatchTitle}" Style="{StaticResource H2}" FontSize="18"/>
+                <TextBlock Text="{l:Tr BatchSubtitle}" Style="{StaticResource Caption}" Margin="0,2,0,0"/>
+            </StackPanel>
+        </StackPanel>
+
+        <TextBlock Text="{l:Tr BatchAddress}" Style="{StaticResource FieldLabel}" Margin="0,20,0,6"/>
+        <TextBox x:Name="PatternBox" Height="36" VerticalContentAlignment="Center" FlowDirection="LeftToRight" TextChanged="Changed"/>
+        <TextBlock Style="{StaticResource Caption}" Margin="0,6,0,0" TextWrapping="Wrap" Text="{l:Tr BatchHelp}"/>
+
+        <StackPanel x:Name="StarPanel" Orientation="Horizontal" Margin="0,14,0,0">
+            <TextBlock Text="{l:Tr BatchFrom}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <TextBox x:Name="FromBox" Width="90" Height="32" VerticalContentAlignment="Center" FlowDirection="LeftToRight" Text="1" TextChanged="Changed"/>
+            <TextBlock Text="{l:Tr BatchTo}" VerticalAlignment="Center" Margin="16,0,8,0"/>
+            <TextBox x:Name="ToBox" Width="90" Height="32" VerticalContentAlignment="Center" FlowDirection="LeftToRight" Text="10" TextChanged="Changed"/>
+            <TextBlock Text="{l:Tr BatchWidth}" VerticalAlignment="Center" Margin="16,0,8,0"/>
+            <ComboBox x:Name="WidthBox" Width="70" SelectionChanged="Changed"/>
+        </StackPanel>
+
+        <Border Style="{StaticResource Card}" Margin="0,16,0,0" Padding="14,10">
+            <StackPanel>
+                <TextBlock x:Name="CountText" FontWeight="SemiBold"/>
+                <TextBlock x:Name="FirstText" Style="{StaticResource Caption}" FlowDirection="LeftToRight" TextAlignment="Left" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
+                <TextBlock x:Name="LastText" Style="{StaticResource Caption}" FlowDirection="LeftToRight" TextAlignment="Left" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+        </Border>
+
+        <DockPanel Margin="0,20,0,0" LastChildFill="False">
+            <Button x:Name="NextButton" DockPanel.Dock="Right" Style="{StaticResource AccentButton}" Content="{l:Tr BatchNext}" IsDefault="True" Click="Next_Click"/>
+            <Button DockPanel.Dock="Left" Style="{StaticResource SecondaryButton}" Content="{l:Tr Cancel}" IsCancel="True"/>
+        </DockPanel>
+    </StackPanel>
+</Window>

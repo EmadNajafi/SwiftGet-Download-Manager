@@ -56,8 +56,8 @@ function render(state) {
   }
 
   for (const m of state.media) {
-    const isAudio = m.type.startsWith("audio") || /\.(mp3|m4a|aac|ogg|oga|opus|wav|flac)(\?|$)/i.test(m.url);
-    const name = fileName(m.url, state.tabTitle, m.type || (isAudio ? "audio/mp3" : "video/mp4"));
+    const isAudio = m.kind === "audio";
+    const name = m.name || fileName(m.url, state.tabTitle, m.type || "video/mp4");
 
     const row = document.createElement("div");
     row.className = "item";
@@ -67,7 +67,7 @@ function render(state) {
       <button class="dl">${ICONS.download}</button>`;
     row.querySelector(".item-name").textContent = name;
     row.querySelector(".item-name").title = m.url;
-    row.querySelector(".item-meta").textContent = [m.type, formatSize(m.size)].filter(Boolean).join("  ·  ");
+    row.querySelector(".item-meta").textContent = [m.label || m.type, formatSize(m.size)].filter(Boolean).join("  ·  ");
 
     const btn = row.querySelector(".dl");
     btn.title = t("popupDownload");

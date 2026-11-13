@@ -5,7 +5,8 @@ using SwiftGet.Models;
 
 namespace SwiftGet.Core;
 
-public sealed record ProbeResult(string FileName, long Size, bool ResumeSupported, string? ContentType);
+public sealed record ProbeResult(string FileName, long Size, bool ResumeSupported, string? ContentType,
+    bool IsStream = false, DateTimeOffset? LastModified = null, string? ETag = null);
 
 /// <summary>
 /// Downloads one item. When the server supports byte ranges the file is split into segments that are
@@ -45,6 +46,7 @@ public sealed class DownloadEngine
 
     public static async Task<ProbeResult> ProbeAsync(string url, string? referrer, string? cookies, string? userAgent, CancellationToken ct)
     {
+        if (Ftp.IsFtp(url)) return await Ftp.ProbeAsync(url, ct);
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(IoTimeout);
         using var req = Http.CreateRequest(url, referrer, cookies, userAgent);
@@ -71,7 +73,17 @@ public sealed class DownloadEngine
         if (string.IsNullOrWhiteSpace(name))
             name = Format.FileNameFromUrl((resp.RequestMessage?.RequestUri ?? new Uri(url)).ToString());
 
-        return new ProbeResult(Format.SanitizeFileName(name), size, ranges, h.ContentType?.MediaType);
+        var type = h.ContentType?.MediaType;
+        if (HlsParser.LooksLikeStream(url, type))
+        {
+            // a video stream (playlist of parts); the final file becomes .ts or .mp4
+            var stem = Path.GetFileNameWithoutExtension(name);
+            if (string.IsNullOrWhiteSpace(stem) || stem is "index" or "master" or "playlist" or "chunklist") stem = "video";
+            return new ProbeResult(Format.SanitizeFileName(stem + ".mp4"), -1, true, type, IsStream: true);
+        }
+
+        return new ProbeResult(Format.SanitizeFileName(name), size, ranges, type,
+            LastModified: h.LastModified, ETag: resp.Headers.ETag?.Tag);
     }
 
     // ------------------------------------------------------------------ main flow
@@ -92,9 +104,21 @@ public sealed class DownloadEngine
 
             bool segmented = probe.ResumeSupported && probe.Size > 0;
             bool resume = segmented && !fresh && _item.TotalSize == probe.Size && File.Exists(_item.TempPath);
-            _item.TotalSize = probe.Size;
-            _item.ResumeSupported = segmented;
-            if (!resume) InitSegments(segmented);
+            if (!probe.IsStream && !_item.IsStream)
+            {
+                _item.TotalSize = probe.Size;
+                _item.ResumeSupported = segmented;
+                if (!resume) InitSegments(segmented);
+            }
+
+            _item.RemoteLastModified = probe.LastModified;
+            _item.RemoteETag = probe.ETag;
+
+            if (probe.IsStream || _item.IsStream)
+            {
+                await RunStreamAsync(ct);
+                return;
+            }
 
             _item.Status = DownloadStatus.Downloading;
             if (segmented) await DownloadSegmentedAsync(ct);
@@ -105,11 +129,7 @@ public sealed class DownloadEngine
                 throw new IOException(Loc.T("ErrSizeMismatch"));
             if (_item.TotalSize <= 0) _item.TotalSize = got;
 
-            var target = Format.UniquePath(_item.FullPath);
-            File.Move(_item.TempPath, target);
-            _item.FileName = Path.GetFileName(target);
-            _item.DateCompleted = DateTime.Now;
-            _item.Status = DownloadStatus.Completed;
+            Finish(_item.TempPath);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -127,6 +147,57 @@ public sealed class DownloadEngine
             Finished?.Invoke(this);
             _cts.Dispose();
         }
+    }
+
+    /// <summary>Moves the finished file into place and marks the download completed.</summary>
+    void Finish(string source)
+    {
+        string target;
+        if (_item.ReplaceExisting)
+        {
+            target = _item.FullPath;
+            File.Move(source, target, overwrite: true);
+            _item.ReplaceExisting = false;
+        }
+        else
+        {
+            target = Format.UniquePath(_item.FullPath);
+            File.Move(source, target);
+        }
+        _item.FileName = Path.GetFileName(target);
+        MarkOfTheWeb(target);
+        _item.DateCompleted = DateTime.Now;
+        _item.Status = DownloadStatus.Completed;
+    }
+
+    /// <summary>Records that the file came from the internet (Zone.Identifier), so Windows SmartScreen checks it like browser downloads.</summary>
+    void MarkOfTheWeb(string path)
+    {
+        if (!_settings.MarkOfTheWeb) return;
+        try
+        {
+            var zone = "[ZoneTransfer]\r\nZoneId=3\r\n" +
+                       (string.IsNullOrEmpty(_item.Referrer) ? "" : $"ReferrerUrl={_item.Referrer}\r\n") +
+                       $"HostUrl={_item.Url}\r\n";
+            File.WriteAllText(path + ":Zone.Identifier", zone);
+        }
+        catch
+        {
+            // FAT32/exFAT drives can't store it
+        }
+    }
+
+    async Task RunStreamAsync(CancellationToken ct)
+    {
+        _item.IsStream = true;
+        _item.ResumeSupported = true;
+        _item.Status = DownloadStatus.Downloading;
+        var (path, ext) = await new HlsDownloader(_item, _settings, _limiter).RunAsync(ct);
+        if (!string.Equals(Path.GetExtension(_item.FileName), ext, StringComparison.OrdinalIgnoreCase))
+            _item.FileName = Path.GetFileNameWithoutExtension(_item.FileName) + ext;
+        _item.TotalSize = new FileInfo(path).Length;
+        Finish(path);
+        try { Directory.Delete(_item.StreamPartsDir, true); } catch { }
     }
 
     void ApplyServerFileName(string name)
@@ -182,12 +253,11 @@ public sealed class DownloadEngine
             seg.Active = true;
         }
 
-        using var req = Http.CreateRequest(_item.Url, _item.Referrer, _item.Cookies, _item.UserAgent);
-        using var resp = await SendAsync(req, ct);
-        resp.EnsureSuccessStatusCode();
-        await using var net = await resp.Content.ReadAsStreamAsync(ct);
-        await using var fs = new FileStream(_item.TempPath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite, BufferSize, true);
-        await CopyAsync(net, fs, seg, bounded: false, ct);
+        var (net, owner) = await OpenAsync(0, null, ct);
+        using (owner)
+        await using (net)
+        await using (var fs = new FileStream(_item.TempPath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite, BufferSize, true))
+            await CopyAsync(net, fs, seg, bounded: false, ct);
     }
 
     // ------------------------------------------------------------------ multi connection
@@ -290,16 +360,44 @@ public sealed class DownloadEngine
             to = seg.End;
         }
 
-        using var req = Http.CreateRequest(_item.Url, _item.Referrer, _item.Cookies, _item.UserAgent);
-        req.Headers.Range = new RangeHeaderValue(from, to);
-        using var resp = await SendAsync(req, ct);
-        if (resp.StatusCode != HttpStatusCode.PartialContent)
-            throw new IOException(Loc.F("ErrNoRange", (int)resp.StatusCode));
+        var (net, owner) = await OpenAsync(from, to, ct);
+        using (owner)
+        await using (net)
+        await using (var fs = new FileStream(_item.TempPath, FileMode.Open, FileAccess.Write, FileShare.ReadWrite, 1, true))
+        {
+            fs.Seek(from, SeekOrigin.Begin);
+            await CopyAsync(net, fs, seg, bounded: true, ct);
+        }
+    }
 
-        await using var net = await resp.Content.ReadAsStreamAsync(ct);
-        await using var fs = new FileStream(_item.TempPath, FileMode.Open, FileAccess.Write, FileShare.ReadWrite, 1, true);
-        fs.Seek(from, SeekOrigin.Begin);
-        await CopyAsync(net, fs, seg, bounded: true, ct);
+    /// <summary>Opens the file from <paramref name="from"/> (to <paramref name="to"/> if given) over HTTP(S) or FTP.</summary>
+    async Task<(Stream Stream, IDisposable Owner)> OpenAsync(long from, long? to, CancellationToken ct)
+    {
+        if (Ftp.IsFtp(_item.Url)) return await Ftp.OpenAsync(_item.Url, from, ct);
+
+        var req = Http.CreateRequest(_item.Url, _item.Referrer, _item.Cookies, _item.UserAgent);
+        if (to != null) req.Headers.Range = new RangeHeaderValue(from, to);
+        var resp = await SendAsync(req, ct);
+        if (to != null && resp.StatusCode != HttpStatusCode.PartialContent)
+        {
+            resp.Dispose();
+            req.Dispose();
+            throw new IOException(Loc.F("ErrNoRange", (int)resp.StatusCode));
+        }
+        if (!resp.IsSuccessStatusCode)
+        {
+            var code = (int)resp.StatusCode;
+            var reason = resp.ReasonPhrase;
+            resp.Dispose();
+            req.Dispose();
+            throw new HttpRequestException(Loc.F("ErrServer", code, reason));
+        }
+        return (await resp.Content.ReadAsStreamAsync(ct), new Both(resp, req));
+    }
+
+    sealed class Both(IDisposable a, IDisposable b) : IDisposable
+    {
+        public void Dispose() { a.Dispose(); b.Dispose(); }
     }
 
     // ------------------------------------------------------------------ helpers

@@ -28,7 +28,13 @@ Everything needed is already prepared:
 3. **Store listing**: texts and images below. **Privacy**: single purpose and permission justifications below, privacy policy URL, and tick "I do not sell or transfer user data…".
 4. Submit for review. When it's published, copy the **item ID** (32 letters, in the item's URL).
 
-## 3. Connect the IDs to SwiftGet
+## 3. Firefox Add-ons (free)
+
+1. Sign in at https://addons.mozilla.org/developers/ (a free Firefox account).
+2. **Submit a New Add-on** → choose **On this site** (listed) or **On your own** (self-distributed, signed only) → upload `dist/SwiftGet-Extension-Firefox-x.y.z.zip`.
+3. Use the same texts and images as above. Mozilla signs the add-on; after that it installs permanently in normal Firefox.
+
+## 4. Connect the IDs to SwiftGet
 
 Put the IDs in two places and rebuild:
 

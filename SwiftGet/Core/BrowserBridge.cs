@@ -7,6 +7,9 @@ namespace SwiftGet.Core;
 
 public sealed record BridgeRequest(string Url, string? Referrer, string? Cookies, string? UserAgent, string? FileName);
 
+public sealed record BridgeLink(string Url, string? Cookies, string? FileName);
+public sealed record BridgeLinks(List<BridgeLink> Items, string? Referrer, string? UserAgent, string? Title);
+
 /// <summary>
 /// Tiny HTTP endpoint on 127.0.0.1 used by the browser extension.
 /// GET /ping  -> health check;  POST /add {url, referrer, cookies, userAgent, fileName}.
@@ -21,6 +24,7 @@ public sealed class BrowserBridge : IDisposable
     readonly CancellationTokenSource _cts = new();
 
     public event Action<BridgeRequest>? DownloadRequested;
+    public event Action<BridgeLinks>? LinksRequested;
 
     /// <summary>Last time the browser extension contacted the app (it checks in about once a minute).</summary>
     public static DateTime? LastExtensionContact { get; private set; }
@@ -119,6 +123,20 @@ public sealed class BrowserBridge : IDisposable
                     }
                     await RespondAsync(stream, 200, "OK", "{\"ok\":true}", ct);
                     DownloadRequested?.Invoke(req);
+                    return;
+                }
+
+                if (method == "POST" && path == "/addmany")
+                {
+                    BridgeLinks? links = null;
+                    try { links = JsonSerializer.Deserialize<BridgeLinks>(body, Json); } catch { }
+                    if (links?.Items == null || links.Items.Count == 0)
+                    {
+                        await RespondAsync(stream, 400, "Bad Request", "{\"error\":\"no links\"}", ct);
+                        return;
+                    }
+                    await RespondAsync(stream, 200, "OK", "{\"ok\":true}", ct);
+                    LinksRequested?.Invoke(links);
                     return;
                 }
 

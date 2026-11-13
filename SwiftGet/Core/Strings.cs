@@ -263,6 +263,90 @@ public static class Strings
         ["ErrNoRange"] = "The server refused a partial request ({0}).",
         ["ErrTimeout"] = "The server stopped responding.",
         ["ErrClosedEarly"] = "The connection closed before the part was finished.",
+        ["ErrNotPlaylist"] = "This address isn't a valid video stream playlist.",
+        ["ErrDrm"] = "This video is protected ({0}) and can't be downloaded.",
+
+        // menus
+        ["MnTasks"] = "_Tasks", ["MnDownloads"] = "_Downloads", ["MnHelp"] = "_Help",
+        ["MnBatch"] = "Add batch download…", ["MnGrabber"] = "Site grabber…",
+        ["MnImport"] = "Import list…", ["MnExport"] = "Export list…",
+        ["MnResumeAll"] = "Resume all", ["MnRefresh"] = "Refresh download address…",
+        ["MnDeleteCompleted"] = "Remove all completed", ["MnSpeedLimit"] = "Speed limiter…",
+        ["MnBrowser"] = "Browser extension…", ["MnCheckUpdates"] = "Check for updates…",
+        ["ImportFilter"] = "Link list or SwiftGet list|*.txt;*.json|All files|*.*",
+        ["ExportFilter"] = "SwiftGet list (*.json)|*.json|Links only (*.txt)|*.txt",
+        ["ImportDone"] = "{0} downloads were added.", ["ExportDone"] = "{0} downloads were saved.",
+        ["ConfirmDeleteCompleted"] = "Remove {0} completed downloads from the list? The files stay on disk.",
+
+        // refresh address
+        ["RefreshTitle"] = "Refresh download address",
+        ["RefreshHelp"] = "Links from many sites expire after a while. Give this download a new link to the same file, and it continues from where it stopped.",
+        ["RefreshOld"] = "Current address", ["RefreshNew"] = "New address",
+        ["RefreshBrowserHelp"] = "Or open the download page in your browser again and click the download link: SwiftGet catches it for this file.",
+        ["RefreshWait"] = "Catch from browser", ["RefreshApply"] = "Use new address",
+        ["RefreshSizeMismatch"] = "The new link points to a different file ({0}; this download is {1}).",
+        ["RefreshWaiting"] = "Click the download link of \"{0}\" in your browser.",
+        ["RefreshUseLink"] = "Use this link as the new address of \"{0}\"?",
+        ["RefreshDone"] = "\"{0}\" continues with the new address.",
+
+        // updates
+        ["UpdTitle"] = "Update", ["UpdAvailable"] = "SwiftGet {0} is available", ["UpdCurrent"] = "You have version {0}.",
+        ["UpdInstall"] = "Install update", ["UpdOpenPage"] = "Open download page", ["UpdLater"] = "Later", ["UpdSkip"] = "Skip this version",
+        ["UpdNone"] = "You have the latest version ({0}).", ["UpdFailed"] = "Couldn't check for updates: {0}",
+
+        // link picker
+        ["LinksFromPage"] = "Links on the page", ["LinksAddress"] = "Address",
+        ["LinksFilterHint"] = "Filter by name, or a pattern like *.mp4",
+        ["LinksFolderHint"] = "Leave as is to save each file in its category folder",
+        ["LinksAll"] = "All ({0})", ["LinksSelected"] = "{0} of {1} selected",
+
+        // batch
+        ["BatchTitle"] = "Batch download", ["BatchSubtitle"] = "Download a numbered series of files at once.",
+        ["BatchAddress"] = "Address with a pattern",
+        ["BatchHelp"] = "Use [1-20], [001-100] (keeps zeros) or [a-z] in the address. Several patterns can be combined. Or use * with the range below.",
+        ["BatchFrom"] = "From", ["BatchTo"] = "To", ["BatchWidth"] = "Digits", ["BatchNext"] = "Next",
+        ["BatchCount"] = "{0} files", ["BatchTooMany"] = "That's more than {0} links.", ["BatchBadRange"] = "Can't read the range {0}.",
+
+        // site grabber
+        ["GrabTitle"] = "Site grabber", ["GrabSubtitle"] = "Explore a website and collect the files it links to.",
+        ["GrabStart"] = "Start page", ["GrabTypes"] = "File types to collect",
+        ["GrabDepth"] = "Link depth", ["GrabMaxPages"] = "Max pages", ["GrabSameSite"] = "Stay on this site",
+        ["GrabReady"] = "Ready.", ["GrabRun"] = "Start", ["GrabWorking"] = "Exploring…",
+        ["GrabProgress"] = "{0} pages explored, {1} files found…",
+        ["GrabNothing"] = "No matching files were found on {0} pages.",
+        ["GrabFound"] = "{0} files found on {1} pages",
+
+        // sync and safety
+        ["SyncTitle"] = "Synchronization", ["SyncChanged"] = "\"{0}\" changed on the server and is downloading again.",
+        ["ScanThreatTitle"] = "Threat found", ["ScanThreat"] = "The antivirus reported a threat in \"{0}\".",
+
+        // settings
+        ["SetClipboard"] = "Watch the clipboard: offer to download copied links to files",
+        ["SetClipboardTypes"] = "File types",
+        ["SetProxy"] = "Proxy",
+        ["ProxySystem"] = "Use Windows proxy settings", ["ProxyNone"] = "No proxy", ["ProxyManual"] = "Use this proxy:",
+        ["ProxyHost"] = "Proxy address (e.g. 127.0.0.1)", ["ProxyPort"] = "Port",
+        ["SetLogins"] = "Site logins",
+        ["SetLoginsHint"] = "For sites and FTP servers that ask for a user name and password. Passwords are encrypted for your Windows account.",
+        ["LoginHost"] = "Site (e.g. files.example.com or *.example.com)", ["LoginUser"] = "User name", ["LoginPassword"] = "Password", ["LoginAdd"] = "Add",
+        ["SetSafety"] = "Safety & updates",
+        ["SetMotw"] = "Mark downloaded files as coming from the internet",
+        ["SetMotwHint"] = "Like browsers do: Windows SmartScreen and Office then check these files before opening them.",
+        ["SetScan"] = "Scan each finished download with an antivirus",
+        ["SetScanner"] = "Antivirus program (leave empty for Microsoft Defender)",
+        ["SetScannerHint"] = "Arguments for another antivirus; %1 is replaced by the file:",
+        ["SetScannerArgs"] = "Arguments",
+        ["SetStreams"] = "Video streams",
+        ["FfmpegFound"] = "ffmpeg found: {0}. Video streams are saved as MP4.",
+        ["FfmpegMissing"] = "ffmpeg wasn't found, so most video streams are saved as .ts files (they play in VLC, MPC and Windows Media Player). To get MP4, download ffmpeg and choose ffmpeg.exe below.",
+        ["SetUpdates"] = "Updates",
+        ["SetCheckUpdates"] = "Check for new versions of SwiftGet once a day",
+        ["ErrProxy"] = "Enter the proxy address and a port between 1 and 65535.",
+
+        // queue sync
+        ["QSync"] = "Synchronize: check finished files for changes every",
+        ["QSyncHint"] = "If a file changed on the server (new size or date), it's downloaded again and replaces the old copy.",
+        ["QSyncHours"] = "{0} hours",
     };
 
     public static readonly Dictionary<string, string> Fa = new()
@@ -515,5 +599,80 @@ public static class Strings
         ["ErrNoRange"] = "سرور درخواست بخشی را نپذیرفت ({0}).",
         ["ErrTimeout"] = "سرور پاسخ نمی‌دهد.",
         ["ErrClosedEarly"] = "اتصال پیش از پایان بخش بسته شد.",
+        ["ErrNotPlaylist"] = "این آدرس فهرست پخش معتبر ویدیو نیست.",
+        ["ErrDrm"] = "این ویدیو محافظت‌شده است ({0}) و قابل دانلود نیست.",
+
+        ["MnTasks"] = "_کارها", ["MnDownloads"] = "_دانلودها", ["MnHelp"] = "_راهنما",
+        ["MnBatch"] = "دانلود گروهی…", ["MnGrabber"] = "جمع‌آوری فایل از سایت…",
+        ["MnImport"] = "وارد کردن لیست…", ["MnExport"] = "ذخیرهٔ لیست…",
+        ["MnResumeAll"] = "ادامهٔ همه", ["MnRefresh"] = "به‌روزرسانی آدرس دانلود…",
+        ["MnDeleteCompleted"] = "حذف همهٔ تمام‌شده‌ها از لیست", ["MnSpeedLimit"] = "محدودیت سرعت…",
+        ["MnBrowser"] = "افزونهٔ مرورگر…", ["MnCheckUpdates"] = "بررسی نسخهٔ جدید…",
+        ["ImportFilter"] = "لیست لینک یا لیست SwiftGet|*.txt;*.json|همهٔ فایل‌ها|*.*",
+        ["ExportFilter"] = "لیست SwiftGet (*.json)|*.json|فقط لینک‌ها (*.txt)|*.txt",
+        ["ImportDone"] = "{0} دانلود اضافه شد.", ["ExportDone"] = "{0} دانلود ذخیره شد.",
+        ["ConfirmDeleteCompleted"] = "{0} دانلود تمام‌شده از لیست حذف شود؟ فایل‌ها روی دیسک می‌مانند.",
+
+        ["RefreshTitle"] = "به‌روزرسانی آدرس دانلود",
+        ["RefreshHelp"] = "لینک بسیاری از سایت‌ها بعد از مدتی منقضی می‌شود. یک لینک جدید از همین فایل بدهید تا دانلود از همان‌جا که مانده ادامه پیدا کند.",
+        ["RefreshOld"] = "آدرس فعلی", ["RefreshNew"] = "آدرس جدید",
+        ["RefreshBrowserHelp"] = "یا صفحهٔ دانلود را دوباره در مرورگر باز کنید و روی لینک دانلود بزنید؛ SwiftGet آن را برای همین فایل می‌گیرد.",
+        ["RefreshWait"] = "گرفتن از مرورگر", ["RefreshApply"] = "استفاده از آدرس جدید",
+        ["RefreshSizeMismatch"] = "لینک جدید مربوط به فایل دیگری است ({0}؛ این دانلود {1} است).",
+        ["RefreshWaiting"] = "در مرورگر روی لینک دانلود «{0}» بزنید.",
+        ["RefreshUseLink"] = "این لینک به‌عنوان آدرس جدید «{0}» استفاده شود؟",
+        ["RefreshDone"] = "«{0}» با آدرس جدید ادامه پیدا می‌کند.",
+
+        ["UpdTitle"] = "به‌روزرسانی", ["UpdAvailable"] = "نسخهٔ {0} از SwiftGet آماده است", ["UpdCurrent"] = "نسخهٔ فعلی شما {0} است.",
+        ["UpdInstall"] = "نصب به‌روزرسانی", ["UpdOpenPage"] = "باز کردن صفحهٔ دانلود", ["UpdLater"] = "بعداً", ["UpdSkip"] = "رد کردن این نسخه",
+        ["UpdNone"] = "آخرین نسخه را دارید ({0}).", ["UpdFailed"] = "بررسی نسخهٔ جدید ممکن نشد: {0}",
+
+        ["LinksFromPage"] = "لینک‌های صفحه", ["LinksAddress"] = "آدرس",
+        ["LinksFilterHint"] = "فیلتر بر اساس نام، یا الگویی مثل *.mp4",
+        ["LinksFolderHint"] = "اگر تغییر ندهید، هر فایل در پوشهٔ دستهٔ خودش ذخیره می‌شود",
+        ["LinksAll"] = "همه ({0})", ["LinksSelected"] = "{0} از {1} انتخاب شده",
+
+        ["BatchTitle"] = "دانلود گروهی", ["BatchSubtitle"] = "دانلود یک‌جای فایل‌های شماره‌دار.",
+        ["BatchAddress"] = "آدرس همراه با الگو",
+        ["BatchHelp"] = "در آدرس از [1-20]، [001-100] (صفرها حفظ می‌شوند) یا [a-z] استفاده کنید. چند الگو با هم هم می‌شود. یا از * همراه با بازهٔ پایین استفاده کنید.",
+        ["BatchFrom"] = "از", ["BatchTo"] = "تا", ["BatchWidth"] = "تعداد رقم", ["BatchNext"] = "بعدی",
+        ["BatchCount"] = "{0} فایل", ["BatchTooMany"] = "بیش از {0} لینک است.", ["BatchBadRange"] = "بازهٔ {0} قابل خواندن نیست.",
+
+        ["GrabTitle"] = "جمع‌آوری فایل از سایت", ["GrabSubtitle"] = "یک سایت را می‌گردد و فایل‌هایی را که لینک داده جمع می‌کند.",
+        ["GrabStart"] = "صفحهٔ شروع", ["GrabTypes"] = "پسوند فایل‌هایی که جمع شوند",
+        ["GrabDepth"] = "عمق لینک‌ها", ["GrabMaxPages"] = "حداکثر صفحه", ["GrabSameSite"] = "فقط همین سایت",
+        ["GrabReady"] = "آماده.", ["GrabRun"] = "شروع", ["GrabWorking"] = "در حال گشتن…",
+        ["GrabProgress"] = "{0} صفحه گشته شد، {1} فایل پیدا شد…",
+        ["GrabNothing"] = "در {0} صفحه فایل مناسبی پیدا نشد.",
+        ["GrabFound"] = "{0} فایل در {1} صفحه پیدا شد",
+
+        ["SyncTitle"] = "همگام‌سازی", ["SyncChanged"] = "«{0}» روی سرور تغییر کرده و دوباره دانلود می‌شود.",
+        ["ScanThreatTitle"] = "تهدید پیدا شد", ["ScanThreat"] = "ضدویروس در «{0}» تهدید پیدا کرد.",
+
+        ["SetClipboard"] = "زیر نظر گرفتن کلیپ‌بورد: لینک فایل‌هایی که کپی می‌کنید برای دانلود پیشنهاد شود",
+        ["SetClipboardTypes"] = "پسوند فایل‌ها",
+        ["SetProxy"] = "پروکسی",
+        ["ProxySystem"] = "استفاده از تنظیمات پروکسی ویندوز", ["ProxyNone"] = "بدون پروکسی", ["ProxyManual"] = "استفاده از این پروکسی:",
+        ["ProxyHost"] = "آدرس پروکسی (مثلاً 127.0.0.1)", ["ProxyPort"] = "پورت",
+        ["SetLogins"] = "نام کاربری سایت‌ها",
+        ["SetLoginsHint"] = "برای سایت‌ها و سرورهای FTP که نام کاربری و رمز می‌خواهند. رمزها برای حساب ویندوز شما رمزنگاری می‌شوند.",
+        ["LoginHost"] = "سایت (مثلاً files.example.com یا *.example.com)", ["LoginUser"] = "نام کاربری", ["LoginPassword"] = "رمز عبور", ["LoginAdd"] = "افزودن",
+        ["SetSafety"] = "امنیت و به‌روزرسانی",
+        ["SetMotw"] = "علامت‌گذاری فایل‌های دانلودشده به‌عنوان فایل اینترنتی",
+        ["SetMotwHint"] = "مثل مرورگرها: Windows SmartScreen و Office این فایل‌ها را پیش از باز شدن بررسی می‌کنند.",
+        ["SetScan"] = "اسکن هر دانلود تمام‌شده با ضدویروس",
+        ["SetScanner"] = "برنامهٔ ضدویروس (خالی = Microsoft Defender)",
+        ["SetScannerHint"] = "آرگومان‌ها برای ضدویروس دیگر؛ به‌جای %1 مسیر فایل قرار می‌گیرد:",
+        ["SetScannerArgs"] = "آرگومان‌ها",
+        ["SetStreams"] = "ویدیوهای استریم",
+        ["FfmpegFound"] = "ffmpeg پیدا شد: {0}. ویدیوهای استریم به‌صورت MP4 ذخیره می‌شوند.",
+        ["FfmpegMissing"] = "ffmpeg پیدا نشد، پس بیشتر ویدیوهای استریم با پسوند ts ذخیره می‌شوند (در VLC، MPC و Windows Media Player پخش می‌شوند). برای MP4، ffmpeg را دانلود کنید و فایل ffmpeg.exe را در پایین انتخاب کنید.",
+        ["SetUpdates"] = "به‌روزرسانی",
+        ["SetCheckUpdates"] = "روزی یک بار نسخهٔ جدید SwiftGet بررسی شود",
+        ["ErrProxy"] = "آدرس پروکسی و پورتی بین 1 تا 65535 وارد کنید.",
+
+        ["QSync"] = "همگام‌سازی: بررسی تغییر فایل‌های تمام‌شده هر",
+        ["QSyncHint"] = "اگر فایلی روی سرور تغییر کرده باشد (حجم یا تاریخ جدید)، دوباره دانلود می‌شود و جای نسخهٔ قبلی را می‌گیرد.",
+        ["QSyncHours"] = "{0} ساعت",
     };
 }

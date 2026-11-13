@@ -50,6 +50,7 @@ public partial class SettingsWindow : Window
             new(Loc.T("SetConnections"), "", PageConnections),
             new(Loc.T("SetBrowser"), "", PageBrowser),
             new(Loc.T("SetAppearance"), "", PageAppearance),
+            new(Loc.T("SetSafety"), "", PageSafety),
             new(Loc.T("SetAbout"), "", PageAbout),
         };
         PageList.ItemsSource = _pages;
@@ -62,6 +63,28 @@ public partial class SettingsWindow : Window
         ShowDialogBox.IsChecked = current.ShowDialogForBrowser;
         ShowCompleteBox.IsChecked = current.ShowCompleteDialog;
         ShowProgressBox.IsChecked = current.ShowProgressWindow;
+        ClipboardBox.IsChecked = current.MonitorClipboard;
+        ClipboardTypesBox.Text = current.ClipboardExtensions;
+
+        // proxy and site logins
+        (current.ProxyMode switch { "None" => ProxyNone, "Manual" => ProxyManual, _ => ProxySystem }).IsChecked = true;
+        ProxyHostBox.Text = current.ProxyHost;
+        ProxyPortBox.Text = current.ProxyPort.ToString();
+        ProxyUserBox.Text = current.ProxyUser;
+        ProxyPassBox.Password = Secret.Unprotect(current.ProxyPassword);
+        Proxy_Changed(this, new RoutedEventArgs());
+        _logins = current.SiteLogins.Select(l => new SiteLogin { Host = l.Host, User = l.User, Password = l.Password }).ToList();
+        RenderLogins();
+
+        // safety, streams, updates
+        MotwBox.IsChecked = current.MarkOfTheWeb;
+        ScanBox.IsChecked = current.ScanAfterDownload;
+        ScannerBox.Text = current.ScannerPath;
+        ScannerArgsBox.Text = current.ScannerArgs;
+        FfmpegBox.Text = current.FfmpegPath;
+        var ffmpeg = Ffmpeg.Find(current);
+        FfmpegStatus.Text = ffmpeg != null ? Loc.F("FfmpegFound", ffmpeg) : Loc.T("FfmpegMissing");
+        UpdatesBox.IsChecked = current.CheckForUpdates;
 
         // connections
         ConnectionsBox.ItemsSource = ConnectionChoices;
@@ -220,7 +243,27 @@ public partial class SettingsWindow : Window
         if (!int.TryParse(PortBox.Text, out var port) || port < 1024 || port > 65535) { Fail(1, "ErrPort"); return; }
         if (!IsTime(StartTimeBox.Text) || !IsTime(StopTimeBox.Text)) { Fail(2, "ErrTime"); return; }
 
-        Result = new AppSettings
+        if (ProxyManual.IsChecked == true && (string.IsNullOrWhiteSpace(ProxyHostBox.Text) || !int.TryParse(ProxyPortBox.Text, out var pp) || pp < 1 || pp > 65535))
+        { Fail(1, "ErrProxy"); return; }
+
+        // start from a copy so values that aren't on this window (update state, first-run flags…) are kept
+        var r = System.Text.Json.JsonSerializer.Deserialize<AppSettings>(System.Text.Json.JsonSerializer.Serialize(_current, Storage.Json), Storage.Json)!;
+        r.MonitorClipboard = ClipboardBox.IsChecked == true;
+        r.ClipboardExtensions = ClipboardTypesBox.Text.Trim();
+        r.ProxyMode = ProxyNone.IsChecked == true ? "None" : ProxyManual.IsChecked == true ? "Manual" : "System";
+        r.ProxyHost = ProxyHostBox.Text.Trim();
+        r.ProxyPort = int.TryParse(ProxyPortBox.Text, out var proxyPort) ? proxyPort : 8080;
+        r.ProxyUser = ProxyUserBox.Text.Trim();
+        r.ProxyPassword = Secret.Protect(ProxyPassBox.Password);
+        r.SiteLogins = _logins;
+        r.MarkOfTheWeb = MotwBox.IsChecked == true;
+        r.ScanAfterDownload = ScanBox.IsChecked == true;
+        r.ScannerPath = ScannerBox.Text.Trim();
+        r.ScannerArgs = string.IsNullOrWhiteSpace(ScannerArgsBox.Text) ? "\"%1\"" : ScannerArgsBox.Text.Trim();
+        r.FfmpegPath = FfmpegBox.Text.Trim();
+        r.CheckForUpdates = UpdatesBox.IsChecked == true;
+
+        Result = Apply(r, new AppSettings
         {
             DefaultFolder = FolderBox.Text.Trim(),
             UseCategoryFolders = CategoryFoldersBox.IsChecked == true,
@@ -244,10 +287,85 @@ public partial class SettingsWindow : Window
                 Days = _dayBoxes.Select(b => b.IsChecked == true).ToArray(),
                 ShutdownWhenDone = ShutdownBox.IsChecked == true,
             },
-        };
+        });
 
         if (port != _current.BridgePort) Dialogs.Info(this, Loc.T("PortRestart"));
         DialogResult = true;
+    }
+
+    /// <summary>Copies the values shown on this window onto the full settings.</summary>
+    static AppSettings Apply(AppSettings target, AppSettings ui)
+    {
+        target.DefaultFolder = ui.DefaultFolder;
+        target.UseCategoryFolders = ui.UseCategoryFolders;
+        target.StartWithWindows = ui.StartWithWindows;
+        target.ShowDialogForBrowser = ui.ShowDialogForBrowser;
+        target.ShowCompleteDialog = ui.ShowCompleteDialog;
+        target.ShowProgressWindow = ui.ShowProgressWindow;
+        target.Connections = ui.Connections;
+        target.MaxConcurrent = ui.MaxConcurrent;
+        target.MaxRetries = ui.MaxRetries;
+        target.SpeedLimitKBps = ui.SpeedLimitKBps;
+        target.BridgePort = ui.BridgePort;
+        target.Language = ui.Language;
+        target.Theme = ui.Theme;
+        target.Schedule = ui.Schedule;
+        return target;
+    }
+
+    // ------------------------------------------------------------------ proxy, logins, tools
+
+    List<SiteLogin> _logins = new();
+
+    void Proxy_Changed(object sender, RoutedEventArgs e) => ProxyFields.IsEnabled = ProxyManual.IsChecked == true;
+
+    void RenderLogins()
+    {
+        LoginsPanel.Children.Clear();
+        foreach (var login in _logins)
+        {
+            var row = new Grid { Margin = new Thickness(4, 2, 0, 6) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.4, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var host = new TextBlock { Text = login.Host, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center, FlowDirection = FlowDirection.LeftToRight, HorizontalAlignment = HorizontalAlignment.Left, Foreground = (Brush)FindResource("Text") };
+            var user = new TextBlock { Text = login.User + "  ·  ••••••", VerticalAlignment = VerticalAlignment.Center, FlowDirection = FlowDirection.LeftToRight, HorizontalAlignment = HorizontalAlignment.Left, Foreground = (Brush)FindResource("TextSecondary") };
+            var remove = new Button { Style = (Style)FindResource("IconButton"), Content = new TextBlock { Text = "", Style = (Style)FindResource("Glyph"), FontSize = 12 }, ToolTip = Loc.T("Delete") };
+            var l = login;
+            remove.Click += (_, _) => { _logins.Remove(l); RenderLogins(); };
+            Grid.SetColumn(user, 1);
+            Grid.SetColumn(remove, 2);
+            row.Children.Add(host);
+            row.Children.Add(user);
+            row.Children.Add(remove);
+            LoginsPanel.Children.Add(row);
+        }
+    }
+
+    void AddLogin_Click(object sender, RoutedEventArgs e)
+    {
+        var host = LoginHostBox.Text.Trim();
+        if (Uri.TryCreate(host, UriKind.Absolute, out var u)) host = u.Host;   // a full address was pasted
+        if (host.Length == 0 || LoginUserBox.Text.Trim().Length == 0) return;
+        _logins.RemoveAll(l => string.Equals(l.Host, host, StringComparison.OrdinalIgnoreCase));
+        _logins.Add(new SiteLogin { Host = host, User = LoginUserBox.Text.Trim(), Password = Secret.Protect(LoginPassBox.Password) });
+        LoginHostBox.Text = LoginUserBox.Text = "";
+        LoginPassBox.Password = "";
+        RenderLogins();
+    }
+
+    void BrowseScanner_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new OpenFileDialog { Filter = "*.exe|*.exe" };
+        if (dlg.ShowDialog(this) == true) ScannerBox.Text = dlg.FileName;
+    }
+
+    void BrowseFfmpeg_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new OpenFileDialog { Filter = "ffmpeg.exe|ffmpeg.exe|*.exe|*.exe" };
+        if (dlg.ShowDialog(this) != true) return;
+        FfmpegBox.Text = dlg.FileName;
+        FfmpegStatus.Text = Loc.F("FfmpegFound", dlg.FileName);
     }
 
     void Fail(int page, string key)

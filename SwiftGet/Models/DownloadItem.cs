@@ -110,6 +110,21 @@ public sealed class DownloadItem : INotifyPropertyChanged
     }
     public List<Segment> Segments { get; set; } = new();
 
+    // ---- remote file info (used by the sync queue to notice changes)
+    public DateTimeOffset? RemoteLastModified { get; set; }
+    /// <summary>Set by the sync queue: overwrite the old copy instead of saving "name (1)".</summary>
+    public bool ReplaceExisting { get; set; }
+    public string? RemoteETag { get; set; }
+
+    // ---- video streams (HLS): progress counted in parts instead of byte ranges
+    public bool IsStream { get; set; }
+    public int StreamTotal { get; set; }
+    public int StreamDone { get; set; }
+    public long StreamBytes { get; set; }
+    [JsonIgnore] public int StreamActive { get; set; }
+    /// <summary>Folder with the parts of a stream while it downloads.</summary>
+    [JsonIgnore] public string StreamPartsDir => Path.Combine(SaveFolder, $".swiftget-{Id:N}");
+
     // ------------------------------------------------------------------ computed (not saved)
 
     [JsonIgnore] public object SyncRoot { get; } = new();
@@ -126,21 +141,22 @@ public sealed class DownloadItem : INotifyPropertyChanged
     [JsonIgnore]
     public long Downloaded
     {
-        get { lock (SyncRoot) return Segments.Sum(s => s.Downloaded); }
+        get { lock (SyncRoot) return IsStream ? StreamBytes : Segments.Sum(s => s.Downloaded); }
     }
 
     [JsonIgnore]
     public int ActiveConnections
     {
-        get { lock (SyncRoot) return Segments.Count(s => s.Active); }
+        get { lock (SyncRoot) return IsStream ? StreamActive : Segments.Count(s => s.Active); }
     }
 
     [JsonIgnore]
     public double Progress =>
         Status == DownloadStatus.Completed ? 100 :
+        IsStream ? (StreamTotal > 0 ? Math.Min(99.9, StreamDone * 100.0 / StreamTotal) : 0) :
         TotalSize > 0 ? Math.Min(100, Downloaded * 100.0 / TotalSize) : 0;
 
-    [JsonIgnore] public string SizeText => TotalSize > 0 ? Format.Size(TotalSize) : Loc.T("Unknown");
+    [JsonIgnore] public string SizeText => TotalSize > 0 ? (IsStream && Status != DownloadStatus.Completed ? "~" : "") + Format.Size(TotalSize) : Loc.T("Unknown");
     [JsonIgnore] public string DownloadedText => Format.Size(Downloaded);
     [JsonIgnore] public string SpeedText => Status == DownloadStatus.Downloading ? Format.Speed(Speed) : "—";
     [JsonIgnore] public string DateAddedText => Format.Date(DateAdded);

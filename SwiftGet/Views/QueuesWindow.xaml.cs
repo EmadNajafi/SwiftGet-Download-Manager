@@ -40,6 +40,7 @@ public partial class QueuesWindow : Window
         _m = manager;
 
         ConcurrentBox.ItemsSource = Enumerable.Range(1, 10).ToList();
+        SyncHoursBox.ItemsSource = new[] { 1, 2, 4, 6, 12, 24, 48, 168 }.Select(h => new Choice<int>(h, Loc.F("QSyncHours", h))).ToArray();
         ActionBox.ItemsSource = new[]
         {
             new Choice<QueueFinishAction>(QueueFinishAction.None, Loc.T("ActNone")),
@@ -102,6 +103,9 @@ public partial class QueuesWindow : Window
         StopTimeBox.Text = q.StopTime;
         ConcurrentBox.SelectedItem = Math.Clamp(q.MaxConcurrent, 1, 10);
         ActionBox.SelectedItem = ((Choice<QueueFinishAction>[])ActionBox.ItemsSource).First(c => c.Value == q.FinishAction);
+        SyncBox.IsChecked = q.SyncEnabled;
+        var hours = (Choice<int>[])SyncHoursBox.ItemsSource;
+        SyncHoursBox.SelectedItem = hours.FirstOrDefault(h => h.Value == q.SyncIntervalHours) ?? hours[5];
         _loading = false;
         UpdateEnabled();
         UpdateState();
@@ -122,6 +126,8 @@ public partial class QueuesWindow : Window
         if (IsTime(StopTimeBox.Text)) q.StopTime = Normalize(StopTimeBox.Text);
         if (ConcurrentBox.SelectedItem is int n) q.MaxConcurrent = n;
         if (ActionBox.SelectedItem is Choice<QueueFinishAction> a) q.FinishAction = a.Value;
+        q.SyncEnabled = SyncBox.IsChecked == true;
+        if (SyncHoursBox.SelectedItem is Choice<int> h) q.SyncIntervalHours = h.Value;
         // a changed schedule should fire again today
         q.LastStartFire = q.LastStopFire = null;
         _m.QueueSettingsChanged();
@@ -152,6 +158,7 @@ public partial class QueuesWindow : Window
         OnceDate.IsEnabled = OnceRadio.IsChecked == true;
         DaysPanel.IsEnabled = DailyRadio.IsChecked == true;
         StopTimeBox.IsEnabled = StopEnabledBox.IsChecked == true;
+        SyncHoursBox.IsEnabled = SyncBox.IsChecked == true;
     }
 
     void UpdateState()
