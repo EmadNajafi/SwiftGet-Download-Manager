@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Windows.Threading;
@@ -7,42 +6,51 @@ using SwiftGet.Models;
 
 namespace SwiftGet.Core;
 
-/// <summary>Owns the download list, running engines, the queue and the scheduler. UI thread only.</summary>
+/// <summary>Owns the download list, running engines, the queues and the scheduler. UI thread only.</summary>
 public sealed class DownloadManager
 {
     const string ItemsFile = "downloads.json";
     const string SettingsFile = "settings.json";
+    const string QueuesFile = "queues.json";
 
     readonly Dictionary<Guid, DownloadEngine> _engines = new();
     readonly HashSet<Guid> _userPaused = new();
     readonly DispatcherTimer _tick;
     readonly DispatcherTimer _scheduleTimer;
     int _tickCount;
-    int _completedThisRun;
-    DateTime? _lastStartFire, _lastStopFire;
 
     public ObservableCollection<DownloadItem> Items { get; } = new();
+    public ObservableCollection<DownloadQueue> Queues { get; } = new();
     public AppSettings Settings { get; private set; }
     public SpeedLimiter Limiter { get; } = new();
-    public bool QueueRunning { get; private set; }
 
     public event Action<DownloadItem>? ItemCompleted;
     public event Action<string, string>? Notify;
     public event Action? QueueStateChanged;
+    /// <summary>A queue finished and its finish action (shut down, sleep…) should run.</summary>
+    public event Action<DownloadQueue, QueueFinishAction>? QueueFinishActionRequested;
+    /// <summary>Raised for downloads the user starts by hand, so the UI can show the progress window.</summary>
+    public event Action<DownloadItem>? ProgressRequested;
 
     public int ActiveCount => _engines.Count;
     public double TotalSpeed => _engines.Values.Sum(e => e.Item.Speed);
     public bool IsRunning(DownloadItem item) => _engines.ContainsKey(item.Id);
+    public bool AnyQueueRunning => Queues.Any(q => q.IsRunning);
+    public DownloadQueue MainQueue => Queues.First(q => q.IsMain);
+    public DownloadQueue? FindQueue(Guid? id) => id == null ? null : Queues.FirstOrDefault(q => q.Id == id);
 
     public DownloadManager()
     {
         Settings = Storage.Load<AppSettings>(SettingsFile) ?? new AppSettings();
         Limiter.BytesPerSecond = Settings.SpeedLimitKBps * 1024L;
 
+        LoadQueues();
+
         foreach (var item in Storage.Load<List<DownloadItem>>(ItemsFile) ?? new())
         {
             if (item.Status is DownloadStatus.Connecting or DownloadStatus.Downloading)
                 item.Status = DownloadStatus.Paused;
+            if (item.QueueId != null && FindQueue(item.QueueId) == null) item.QueueId = DownloadQueue.MainId;
             Items.Add(item);
         }
 
@@ -50,11 +58,46 @@ public sealed class DownloadManager
         _tick.Tick += (_, _) => OnTick();
         _tick.Start();
 
-        _scheduleTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
+        _scheduleTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
         _scheduleTimer.Tick += (_, _) => CheckSchedule();
         _scheduleTimer.Start();
 
-        Loc.I.LanguageChanged += () => { foreach (var i in Items) i.RefreshAll(); };
+        Loc.I.LanguageChanged += () =>
+        {
+            foreach (var i in Items) i.RefreshAll();
+            foreach (var q in Queues) q.RefreshTexts();
+        };
+
+        // queues set to start with the app
+        System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
+        {
+            foreach (var q in Queues.Where(q => q.StartOnLaunch)) StartQueue(q);
+        }, DispatcherPriority.ApplicationIdle);
+    }
+
+    void LoadQueues()
+    {
+        var loaded = Storage.Load<List<DownloadQueue>>(QueuesFile);
+        if (loaded != null) foreach (var q in loaded) Queues.Add(q);
+
+        if (!Queues.Any(q => q.IsMain))
+        {
+            // first run, or upgrade from 1.0/1.1: carry the old single-queue settings over to the main queue
+            var s = Settings.Schedule;
+            Queues.Insert(0, new DownloadQueue
+            {
+                Id = DownloadQueue.MainId,
+                Name = "Main queue",
+                MaxConcurrent = Math.Clamp(Settings.MaxConcurrent, 1, 20),
+                StartEnabled = s.StartEnabled,
+                StartTime = s.StartTime,
+                StopEnabled = s.StopEnabled,
+                StopTime = s.StopTime,
+                Days = s.Days.Length == 7 ? s.Days : new[] { true, true, true, true, true, true, true },
+                FinishAction = s.ShutdownWhenDone ? QueueFinishAction.Shutdown : QueueFinishAction.None,
+            });
+            SaveQueues();
+        }
     }
 
     // ------------------------------------------------------------------ items
@@ -79,6 +122,7 @@ public sealed class DownloadManager
 
     public void Add(DownloadItem item)
     {
+        if (item.QueueId != null) item.QueueOrder = NextOrder(item.QueueId.Value);
         Items.Add(item);
         Save();
         Pump();
@@ -94,9 +138,6 @@ public sealed class DownloadManager
         item.Status = DownloadStatus.Connecting;
         engine.Start();
     }
-
-    /// <summary>Raised for downloads the user starts by hand, so the UI can show the progress window.</summary>
-    public event Action<DownloadItem>? ProgressRequested;
 
     public void StartWithProgress(DownloadItem item)
     {
@@ -119,17 +160,6 @@ public sealed class DownloadManager
             _userPaused.Add(e.Item.Id);
             e.Stop();
         }
-    }
-
-    public void SetQueued(DownloadItem item, bool inQueue)
-    {
-        item.InQueue = inQueue;
-        if (inQueue && !IsRunning(item) && item.Status is DownloadStatus.Paused or DownloadStatus.Error)
-            item.Status = DownloadStatus.Queued;
-        if (!inQueue && item.Status == DownloadStatus.Queued)
-            item.Status = DownloadStatus.Paused;
-        Save();
-        Pump();
     }
 
     public void Remove(DownloadItem item, bool deleteCompletedFile)
@@ -176,73 +206,150 @@ public sealed class DownloadManager
         e.Item.Tick();
         if (e.Item.Status == DownloadStatus.Completed)
         {
-            if (e.Item.InQueue) _completedThisRun++;
+            if (FindQueue(e.Item.QueueId) is { } q) q.CompletedThisRun++;
             ItemCompleted?.Invoke(e.Item);
         }
         Save();
         Pump();
     }
 
-    // ------------------------------------------------------------------ queue
+    // ------------------------------------------------------------------ queue membership and order
 
-    public void StartQueue()
+    int NextOrder(Guid queueId) =>
+        Items.Where(i => i.QueueId == queueId).Select(i => i.QueueOrder).DefaultIfEmpty(0).Max() + 1;
+
+    /// <summary>Files of a queue in the order they will be downloaded.</summary>
+    public List<DownloadItem> ItemsOf(DownloadQueue q) =>
+        Items.Where(i => i.QueueId == q.Id).OrderBy(i => i.QueueOrder).ThenBy(i => i.DateAdded).ToList();
+
+    /// <summary>Moves a download into a queue (or out of all queues when <paramref name="queue"/> is null).</summary>
+    public void SetQueue(DownloadItem item, DownloadQueue? queue)
     {
-        _userPaused.Clear();
-        if (!QueueRunning) _completedThisRun = 0;
-        QueueRunning = true;
+        if (item.QueueId == queue?.Id) return;
+        if (queue != null)
+        {
+            item.QueueOrder = NextOrder(queue.Id);
+            item.QueueId = queue.Id;
+            if (!IsRunning(item) && item.Status is DownloadStatus.Paused or DownloadStatus.Error)
+                item.Status = DownloadStatus.Queued;
+        }
+        else
+        {
+            item.QueueId = null;
+            if (item.Status == DownloadStatus.Queued) item.Status = DownloadStatus.Paused;
+        }
+        Save();
+        Pump();
+    }
+
+    /// <summary>Moves a download one place up (-1) or down (+1) in its queue.</summary>
+    public void Move(DownloadItem item, int direction)
+    {
+        if (FindQueue(item.QueueId) is not { } q) return;
+        var list = ItemsOf(q);
+        for (int i = 0; i < list.Count; i++) list[i].QueueOrder = i + 1;   // normalise
+        int index = list.IndexOf(item), target = index + direction;
+        if (index < 0 || target < 0 || target >= list.Count) return;
+        (list[index].QueueOrder, list[target].QueueOrder) = (list[target].QueueOrder, list[index].QueueOrder);
+        Save();
+    }
+
+    // ------------------------------------------------------------------ queues
+
+    public DownloadQueue CreateQueue(string name)
+    {
+        var q = new DownloadQueue { Name = name };
+        Queues.Add(q);
+        SaveQueues();
+        return q;
+    }
+
+    public void DeleteQueue(DownloadQueue q)
+    {
+        if (q.IsMain) return;
+        StopQueue(q);
+        foreach (var item in Items.Where(i => i.QueueId == q.Id).ToList())
+        {
+            item.QueueId = null;
+            if (item.Status == DownloadStatus.Queued) item.Status = DownloadStatus.Paused;
+        }
+        Queues.Remove(q);
+        SaveQueues();
+        Save();
+        QueueStateChanged?.Invoke();
+    }
+
+    public void StartQueue(DownloadQueue q)
+    {
+        foreach (var item in Items.Where(i => i.QueueId == q.Id)) _userPaused.Remove(item.Id);
+        if (!q.IsRunning) q.CompletedThisRun = 0;
+        q.IsRunning = true;
         QueueStateChanged?.Invoke();
         Pump();
     }
 
-    public void StopQueue()
+    public void StopQueue(DownloadQueue q)
     {
-        QueueRunning = false;
-        foreach (var e in _engines.Values.Where(e => e.Item.InQueue).ToList()) e.Stop();
+        q.IsRunning = false;
+        foreach (var e in _engines.Values.Where(e => e.Item.QueueId == q.Id).ToList()) e.Stop();
         QueueStateChanged?.Invoke();
     }
 
     void Pump()
     {
-        if (!QueueRunning) return;
-        int active = Items.Count(i => i.InQueue && _engines.ContainsKey(i.Id));
-        var pending = Items
-            .Where(i => i.InQueue && !_engines.ContainsKey(i.Id) && !_userPaused.Contains(i.Id)
-                        && i.Status is DownloadStatus.Queued or DownloadStatus.Paused)
-            .OrderBy(i => i.DateAdded)
-            .ToList();
-
-        foreach (var item in pending)
+        foreach (var q in Queues.Where(q => q.IsRunning).ToList())
         {
-            if (active >= Math.Max(1, Settings.MaxConcurrent)) break;
-            Start(item);
-            active++;
-        }
-
-        if (active == 0)
-        {
-            QueueRunning = false;
-            QueueStateChanged?.Invoke();
-            Notify?.Invoke(Loc.T("NotifyQueueTitle"), Loc.T("NotifyQueueDone"));
-            if (Settings.Schedule.ShutdownWhenDone && _completedThisRun > 0)
+            var files = ItemsOf(q);
+            int active = files.Count(i => _engines.ContainsKey(i.Id));
+            foreach (var item in files)
             {
-                Notify?.Invoke(Loc.T("NotifyShutdownTitle"), Loc.T("NotifyShutdown"));
-                try { Process.Start(new ProcessStartInfo("shutdown", "/s /t 60") { CreateNoWindow = true, UseShellExecute = false }); }
-                catch { }
+                if (active >= Math.Max(1, q.MaxConcurrent)) break;
+                if (_engines.ContainsKey(item.Id) || _userPaused.Contains(item.Id)) continue;
+                if (item.Status is not (DownloadStatus.Queued or DownloadStatus.Paused)) continue;
+                Start(item);
+                active++;
             }
+
+            if (active == 0) FinishQueue(q);
         }
+    }
+
+    void FinishQueue(DownloadQueue q)
+    {
+        q.IsRunning = false;
+        QueueStateChanged?.Invoke();
+        Notify?.Invoke(Loc.T("NotifyQueueTitle"), Loc.F("NotifyQueueDoneNamed", q.DisplayName));
+        if (q.CompletedThisRun > 0 && q.FinishAction != QueueFinishAction.None)
+            QueueFinishActionRequested?.Invoke(q, q.FinishAction);
     }
 
     // ------------------------------------------------------------------ scheduler
 
     void CheckSchedule()
     {
-        var s = Settings.Schedule;
         var now = DateTime.Now;
-        if (s.Days.Length != 7 || !s.Days[(int)now.DayOfWeek]) return;
-        if (s.StartEnabled && TimeSpan.TryParse(s.StartTime, out var start) && Due(now, start, ref _lastStartFire))
-            StartQueue();
-        if (s.StopEnabled && TimeSpan.TryParse(s.StopTime, out var stop) && Due(now, stop, ref _lastStopFire))
-            StopQueue();
+        foreach (var q in Queues.ToList())
+        {
+            bool today = q.StartMode == QueueStartMode.Once
+                ? q.OnceDate.Date == now.Date
+                : q.Days.Length == 7 && q.Days[(int)now.DayOfWeek];
+
+            if (q.StartEnabled && today && TimeSpan.TryParse(q.StartTime, out var start))
+            {
+                DateTime? last = q.LastStartFire;
+                if (Due(now, start, ref last)) StartQueue(q);
+                q.LastStartFire = last;
+            }
+
+            // the stop time applies on the days the queue is scheduled (or every day when it has no start time)
+            bool stopToday = !q.StartEnabled || today;
+            if (q.StopEnabled && stopToday && TimeSpan.TryParse(q.StopTime, out var stop))
+            {
+                DateTime? last = q.LastStopFire;
+                if (Due(now, stop, ref last) && q.IsRunning) StopQueue(q);
+                q.LastStopFire = last;
+            }
+        }
     }
 
     static bool Due(DateTime now, TimeSpan at, ref DateTime? last)
@@ -277,12 +384,25 @@ public sealed class DownloadManager
         catch { }
     }
 
+    public void SaveQueues()
+    {
+        try { Storage.Save(QueuesFile, Queues.ToList()); } catch { }
+    }
+
     public void ApplySettings(AppSettings settings)
     {
         Settings = settings;
         Limiter.BytesPerSecond = settings.SpeedLimitKBps * 1024L;
         Storage.Save(SettingsFile, settings);
         Pump();
+    }
+
+    /// <summary>Call after a queue's settings change (parallel limit, etc.).</summary>
+    public void QueueSettingsChanged()
+    {
+        SaveQueues();
+        Pump();
+        QueueStateChanged?.Invoke();
     }
 
     public void Shutdown()
@@ -293,6 +413,7 @@ public sealed class DownloadManager
         try { Task.WaitAll(tasks, TimeSpan.FromSeconds(3)); } catch { }
         foreach (var item in Items.Where(i => i.IsRunning)) item.Status = DownloadStatus.Paused;
         Save();
+        SaveQueues();
         Storage.Save(SettingsFile, Settings);
     }
 }

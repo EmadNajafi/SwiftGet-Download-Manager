@@ -30,6 +30,8 @@ public partial class AddDownloadWindow : Window
         _nameHint = string.IsNullOrWhiteSpace(fileName) ? null : Format.SanitizeFileName(fileName);
 
         CategoryBox.ItemsSource = Categories.All;
+        QueueBox.ItemsSource = _m.Queues;
+        QueueBox.SelectedItem = _m.MainQueue;
         UrlBox.Text = url ?? "";
         if (_nameHint != null) SetAutoName(_nameHint);
         else if (!string.IsNullOrEmpty(url)) SetAutoName(Format.FileNameFromUrl(url));
@@ -190,7 +192,7 @@ public partial class AddDownloadWindow : Window
         }
         else
         {
-            item.InQueue = true;
+            item.QueueId = (QueueBox.SelectedItem as DownloadQueue ?? _m.MainQueue).Id;
             item.Status = DownloadStatus.Queued;
             _m.Add(item);
         }

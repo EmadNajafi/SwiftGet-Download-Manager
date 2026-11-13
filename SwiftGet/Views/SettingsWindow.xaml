@@ -97,8 +97,8 @@
                                 <ComboBox x:Name="ConnectionsBox" Width="110" HorizontalAlignment="Left"/>
                                 <TextBlock Text="{l:Tr SetConnPerFileHint}" Style="{StaticResource Caption}" Margin="0,6,0,0" TextWrapping="Wrap"/>
 
-                                <TextBlock Text="{l:Tr SetMaxConcurrent}" Style="{StaticResource FieldLabel}"/>
-                                <TextBox x:Name="ConcurrentBox" Style="{StaticResource SmallBox}"/>
+                                <TextBlock Text="{l:Tr SetMaxConcurrent}" Style="{StaticResource FieldLabel}" Visibility="Collapsed"/>
+                                <TextBox x:Name="ConcurrentBox" Style="{StaticResource SmallBox}" Visibility="Collapsed"/>
                                 <TextBlock Text="{l:Tr SetRetries}" Style="{StaticResource FieldLabel}"/>
                                 <TextBox x:Name="RetriesBox" Style="{StaticResource SmallBox}"/>
                                 <TextBlock Text="{l:Tr SetSpeedLimit}" Style="{StaticResource FieldLabel}"/>

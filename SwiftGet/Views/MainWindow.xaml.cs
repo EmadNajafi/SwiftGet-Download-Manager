@@ -24,7 +24,9 @@ public sealed class NavEntry : INotifyPropertyChanged
     public Func<DownloadItem, bool> Match { get; init; } = _ => true;
     public ObservableCollection<NavEntry> Children { get; } = new();
 
-    public string Title => Loc.T(TitleKey);
+    public Func<string>? TitleFunc { get; init; }
+    public DownloadQueue? Queue { get; init; }
+    public string Title => TitleFunc?.Invoke() ?? Loc.T(TitleKey);
     public string CountText => _count == 0 ? "" : $"({_count})";
 
     public int Count
@@ -61,7 +63,7 @@ public partial class MainWindow : Window
         Icon = AppIcon.ImageSource;
 
         _view = new ListCollectionView(_m.Items) { IsLiveFiltering = true };
-        foreach (var p in new[] { nameof(DownloadItem.Status), nameof(DownloadItem.InQueue), nameof(DownloadItem.Category), nameof(DownloadItem.FileName) })
+        foreach (var p in new[] { nameof(DownloadItem.Status), nameof(DownloadItem.InQueue), nameof(DownloadItem.QueueId), nameof(DownloadItem.Category), nameof(DownloadItem.FileName) })
             _view.LiveFilteringProperties.Add(p);
         _view.SortDescriptions.Add(new SortDescription(nameof(DownloadItem.DateAdded), ListSortDirection.Descending));
         _view.Filter = Filter;
@@ -71,6 +73,8 @@ public partial class MainWindow : Window
 
         _m.ItemCompleted += OnItemCompleted;
         _m.ProgressRequested += ShowDetails;
+        _m.QueueFinishActionRequested += (q, action) => new CountdownWindow(q, action).Show();
+        _m.Queues.CollectionChanged += (_, _) => RebuildQueueNodes();
         _m.Notify += ShowBalloon;
         _m.QueueStateChanged += UpdateStatus;
         _m.Items.CollectionChanged += (_, _) => UpdateStatus();
@@ -106,13 +110,41 @@ public partial class MainWindow : Window
         var finishedNode = new NavEntry { TitleKey = "NavFinished", Glyph = "", Match = finished, IsExpanded = false };
         foreach (var c in Categories.All) finishedNode.Children.Add(CategoryNode(c, finished));
 
-        var queueNode = new NavEntry { TitleKey = "NavQueue", Glyph = "", GlyphBrush = (Brush)FindResource("Accent"), Match = i => i.InQueue };
+        _queuesNode = new NavEntry { TitleKey = "NavQueues", Glyph = "", GlyphBrush = (Brush)FindResource("Accent"), Match = i => i.InQueue };
+        RebuildQueueNodes();
 
-        _roots.AddRange(new[] { all, unfinishedNode, finishedNode, queueNode });
+        _roots.AddRange(new[] { all, unfinishedNode, finishedNode, _queuesNode });
         NavTree.ItemsSource = _roots;
         all.IsSelected = true;
         _selectedNav = all;
     }
+
+    NavEntry? _queuesNode;
+
+    void RebuildQueueNodes()
+    {
+        if (_queuesNode == null) return;
+        var selectedQueue = _selectedNav?.Queue;
+        _queuesNode.Children.Clear();
+        foreach (var q in _m.Queues)
+        {
+            var queue = q;
+            var node = new NavEntry
+            {
+                TitleFunc = () => queue.DisplayName,
+                Queue = queue,
+                Glyph = "",
+                GlyphBrush = (Brush)FindResource("Accent"),
+                Match = i => i.QueueId == queue.Id,
+            };
+            _queuesNode.Children.Add(node);
+            if (queue == selectedQueue) node.IsSelected = true;
+        }
+        UpdateStatus();
+    }
+
+    /// <summary>The queue the toolbar's queue buttons act on: the selected queue, otherwise the main queue.</summary>
+    DownloadQueue TargetQueue => _selectedNav?.Queue ?? _m.MainQueue;
 
     IEnumerable<NavEntry> AllNav() => _roots.SelectMany(r => r.SelfAndDescendants());
 
@@ -126,7 +158,14 @@ public partial class MainWindow : Window
     void NavTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
     {
         _selectedNav = e.NewValue as NavEntry;
-        _view.Refresh();
+        using (_view.DeferRefresh())
+        {
+            _view.SortDescriptions.Clear();
+            if (_selectedNav?.Queue != null)
+                _view.SortDescriptions.Add(new SortDescription(nameof(DownloadItem.QueueOrder), ListSortDirection.Ascending));
+            else
+                _view.SortDescriptions.Add(new SortDescription(nameof(DownloadItem.DateAdded), ListSortDirection.Descending));
+        }
         UpdateStatus();
     }
 
@@ -159,11 +198,14 @@ public partial class MainWindow : Window
 
         SpeedStatus.Text = $"{Loc.T("TotalSpeed")}: {Format.Speed(_m.TotalSpeed)}";
         ActiveStatus.Text = Loc.F("ActiveDownloads", _m.ActiveCount);
-        QueueStatus.Text = _m.QueueRunning ? Loc.T("QueueRunning") : Loc.T("QueueStopped");
-        QueueDot.Fill = (Brush)FindResource(_m.QueueRunning ? "Success" : "TextTertiary");
+        int running = _m.Queues.Count(q => q.IsRunning);
+        QueueStatus.Text = running > 0 ? Loc.F("QueuesRunning", running) : Loc.T("QueueStopped");
+        QueueDot.Fill = (Brush)FindResource(running > 0 ? "Success" : "TextTertiary");
         CountStatus.Text = Loc.F("ItemsCount", _view.Count);
-        StartQueueButton.IsEnabled = !_m.QueueRunning;
-        StopQueueButton.IsEnabled = _m.QueueRunning;
+        var target = TargetQueue;
+        StartQueueButton.IsEnabled = !target.IsRunning;
+        StopQueueButton.IsEnabled = target.IsRunning;
+        StartQueueButton.ToolTip = StopQueueButton.ToolTip = target.DisplayName;
 
         BridgeText.Text = Loc.T(_bridgeOk ? "BrowserConnected" : "BrowserOff");
         BridgeDot.Fill = (Brush)FindResource(_bridgeOk ? "Success" : "Danger");
@@ -230,9 +272,19 @@ public partial class MainWindow : Window
 
     void Pause_Click(object sender, RoutedEventArgs e) { foreach (var i in Selected()) _m.Pause(i); }
     void PauseAll_Click(object sender, RoutedEventArgs e) => _m.PauseAll();
-    void StartQueue_Click(object sender, RoutedEventArgs e) => _m.StartQueue();
-    void StopQueue_Click(object sender, RoutedEventArgs e) => _m.StopQueue();
-    void Schedule_Click(object sender, RoutedEventArgs e) => OpenSettings(2);
+    void StartQueue_Click(object sender, RoutedEventArgs e) => _m.StartQueue(TargetQueue);
+    void StopQueue_Click(object sender, RoutedEventArgs e) => _m.StopQueue(TargetQueue);
+    void Schedule_Click(object sender, RoutedEventArgs e) => OpenScheduler(_selectedNav?.Queue);
+
+    QueuesWindow? _scheduler;
+
+    public void OpenScheduler(DownloadQueue? queue = null)
+    {
+        if (_scheduler != null) { _scheduler.Activate(); return; }
+        _scheduler = new QueuesWindow(_m, queue) { Owner = IsVisible ? this : null };
+        _scheduler.Closed += (_, _) => { _scheduler = null; UpdateStatus(); };
+        _scheduler.Show();
+    }
     void Settings_Click(object sender, RoutedEventArgs e) => OpenSettings(0);
 
     void Restart_Click(object sender, RoutedEventArgs e)
@@ -256,14 +308,31 @@ public partial class MainWindow : Window
             foreach (var i in items) _m.Remove(i, deleteCompletedFile: true);
     }
 
-    void AddToQueue_Click(object sender, RoutedEventArgs e)
+    /// <summary>Fills the "Add to queue" submenu with the current queues.</summary>
+    void ContextMenu_Opened(object sender, RoutedEventArgs e)
     {
-        foreach (var i in Selected().Where(i => i.Status != DownloadStatus.Completed)) _m.SetQueued(i, true);
+        AddToQueueMenu.Items.Clear();
+        foreach (var q in _m.Queues)
+        {
+            var queue = q;
+            var mi = new MenuItem { Header = queue.DisplayName };
+            mi.Click += (_, _) =>
+            {
+                foreach (var i in Selected().Where(i => i.Status != DownloadStatus.Completed)) _m.SetQueue(i, queue);
+                UpdateStatus();
+            };
+            AddToQueueMenu.Items.Add(mi);
+        }
+        AddToQueueMenu.Items.Add(new Separator());
+        var manage = new MenuItem { Header = Loc.T("Scheduler") + "…" };
+        manage.Click += (_, _) => OpenScheduler();
+        AddToQueueMenu.Items.Add(manage);
     }
 
     void RemoveFromQueue_Click(object sender, RoutedEventArgs e)
     {
-        foreach (var i in Selected()) _m.SetQueued(i, false);
+        foreach (var i in Selected()) _m.SetQueue(i, null);
+        UpdateStatus();
     }
 
     void CopyLink_Click(object sender, RoutedEventArgs e)
@@ -352,8 +421,9 @@ public partial class MainWindow : Window
         menu.Items.Add(Loc.T("TrayShow"), null, (_, _) => ShowFromTray());
         menu.Items.Add(Loc.T("TrayAdd"), null, (_, _) => { ShowFromTray(); AddUrl_Click(this, new RoutedEventArgs()); });
         menu.Items.Add(new WinForms.ToolStripSeparator());
-        menu.Items.Add(Loc.T("StartQueue"), null, (_, _) => _m.StartQueue());
-        menu.Items.Add(Loc.T("StopQueue"), null, (_, _) => _m.StopQueue());
+        menu.Items.Add(Loc.T("StartQueue"), null, (_, _) => _m.StartQueue(_m.MainQueue));
+        menu.Items.Add(Loc.T("StopQueue"), null, (_, _) => _m.StopQueue(_m.MainQueue));
+        menu.Items.Add(Loc.T("Scheduler") + "…", null, (_, _) => { ShowFromTray(); OpenScheduler(); });
         menu.Items.Add(Loc.T("StopAll"), null, (_, _) => _m.PauseAll());
         menu.Items.Add(new WinForms.ToolStripSeparator());
         menu.Items.Add(Loc.T("TrayExit"), null, (_, _) => ExitApp());

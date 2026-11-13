@@ -27,7 +27,8 @@ public sealed class DownloadItem : INotifyPropertyChanged
     string _url = "", _fileName = "", _saveFolder = "", _category = "Other";
     string? _error;
     long _totalSize = -1;
-    bool _resumeSupported, _inQueue;
+    bool _resumeSupported;
+    Guid? _queueId;
     DownloadStatus _status = DownloadStatus.Paused;
     DateTime? _dateCompleted;
     long _lastBytes = -1;
@@ -88,7 +89,25 @@ public sealed class DownloadItem : INotifyPropertyChanged
 
     public DateTime DateAdded { get; set; } = DateTime.Now;
     public DateTime? DateCompleted { get => _dateCompleted; set => Set(ref _dateCompleted, value); }
-    public bool InQueue { get => _inQueue; set => Set(ref _inQueue, value); }
+    /// <summary>The queue this download belongs to, or null.</summary>
+    public Guid? QueueId
+    {
+        get => _queueId;
+        set { if (Set(ref _queueId, value)) Raise(nameof(InQueue)); }
+    }
+
+    /// <summary>Position inside its queue (lower runs first).</summary>
+    public int QueueOrder { get; set; }
+
+    [JsonIgnore] public bool InQueue => _queueId != null;
+
+    /// <summary>Reads the "InQueue" flag written by version 1.0/1.1 (those had a single queue).</summary>
+    [JsonPropertyName("InQueue")]
+    public bool LegacyInQueue
+    {
+        get => InQueue;
+        set { if (value && _queueId == null) _queueId = DownloadQueue.MainId; }
+    }
     public List<Segment> Segments { get; set; } = new();
 
     // ------------------------------------------------------------------ computed (not saved)

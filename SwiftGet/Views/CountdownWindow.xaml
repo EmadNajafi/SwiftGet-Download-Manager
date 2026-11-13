@@ -1,0 +1,31 @@
+<Window x:Class="SwiftGet.Views.CountdownWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l="clr-namespace:SwiftGet.Core"
+        Title="{l:Tr CountdownTitle}" Width="430" SizeToContent="Height" ResizeMode="NoResize" Topmost="True"
+        FlowDirection="{Binding Flow, Source={x:Static l:Loc.I}}"
+        FontFamily="{StaticResource UiFont}" FontSize="13"
+        Background="{DynamicResource Bg}" Foreground="{DynamicResource Text}"
+        WindowStartupLocation="CenterScreen">
+    <StackPanel Margin="22,20,22,20">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Border Width="48" Height="48" CornerRadius="24" Background="{DynamicResource WarningSoft}" VerticalAlignment="Top">
+                <TextBlock x:Name="Glyph" Style="{StaticResource Glyph}" Text="&#xE7E8;" FontSize="21"
+                           Foreground="{DynamicResource Warning}" HorizontalAlignment="Center"/>
+            </Border>
+            <StackPanel Grid.Column="1" Margin="14,2,0,0">
+                <TextBlock x:Name="QueueText" Style="{StaticResource H2}"/>
+                <TextBlock x:Name="MessageText" Margin="0,6,0,0" TextWrapping="Wrap"/>
+            </StackPanel>
+        </Grid>
+        <ProgressBar x:Name="Bar" Style="{StaticResource ThinProgress}" Margin="0,16,0,0" Foreground="{DynamicResource Warning}"/>
+        <DockPanel Margin="0,18,0,0" LastChildFill="False">
+            <Button DockPanel.Dock="Right" Style="{StaticResource AccentButton}" IsDefault="True" Content="{l:Tr Cancel}" Click="Cancel_Click"/>
+            <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Content="{l:Tr DoItNow}" Click="Now_Click"/>
+        </DockPanel>
+    </StackPanel>
+</Window>

@@ -325,7 +325,7 @@
                 </DataGrid.Columns>
 
                 <DataGrid.ContextMenu>
-                    <ContextMenu FlowDirection="{Binding Flow, Source={x:Static l:Loc.I}}">
+                    <ContextMenu FlowDirection="{Binding Flow, Source={x:Static l:Loc.I}}" Opened="ContextMenu_Opened">
                         <MenuItem Header="{l:Tr MenuOpenFile}" Click="OpenFile_Click">
                             <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE8E5;" FontSize="14"/></MenuItem.Icon>
                         </MenuItem>
@@ -346,7 +346,7 @@
                             <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE72C;" FontSize="14"/></MenuItem.Icon>
                         </MenuItem>
                         <Separator/>
-                        <MenuItem Header="{l:Tr MenuAddQueue}" Click="AddToQueue_Click">
+                        <MenuItem x:Name="AddToQueueMenu" Header="{l:Tr MenuAddQueue}">
                             <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE8FD;" FontSize="14"/></MenuItem.Icon>
                         </MenuItem>
                         <MenuItem Header="{l:Tr MenuRemoveQueue}" Click="RemoveFromQueue_Click"/>

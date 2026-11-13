@@ -16,14 +16,14 @@
 
 ![SwiftGet main window](docs/screenshot-light.png)
 
-<p align="center"><img src="docs/screenshot-progress.png" width="420" alt="Download progress window"></p>
+<p align="center"><img src="docs/screenshot-progress.png" width="420" alt="Download progress window">&nbsp;<img src="docs/screenshot-scheduler.png" width="520" alt="Scheduler and queues"></p>
 
 ## Features
 
 - **Multi-connection downloads** – each file is split into parts that download in parallel (8 connections by default, up to 32). When a connection finishes early it takes over half of the largest remaining part, so every connection stays busy until the end.
 - **Pause and resume** – continue after a pause, a dropped connection or a restart, from exactly where you stopped.
 - **Automatic retries** on network errors.
-- **Queue and scheduler** – start or stop the queue at set times on chosen days, limit how many files download at once, and optionally shut down the PC when the queue finishes.
+- **Queues and scheduler** – create as many queues as you like, each with its own start time (once on a date or daily on chosen days), stop time, number of files downloading at once and file order. When a queue finishes SwiftGet can exit, sleep, hibernate or shut down the PC (with a 30-second countdown you can cancel).
 - **Speed limiter** for all downloads.
 - **Automatic categories** – Video, Music, Documents, Compressed, Programs, Images – each saved in its own folder.
 - **Browser integration** for Chrome, Edge, Brave and Opera. Downloads are caught automatically and sent with the browser's cookies and referrer, so downloads that need a login work too. Right-click any link → *Download with SwiftGet*.
@@ -101,7 +101,7 @@ Add a table to `SwiftGet/Core/Strings.cs` with the same keys as `En`, then add i
 - **دانلود چندبخشی**: هر فایل به چند بخش تقسیم می‌شود و بخش‌ها هم‌زمان دانلود می‌شوند (پیش‌فرض ۸ اتصال، تا ۳۲ اتصال).
 - **توقف و ادامهٔ دانلود** پس از قطع اینترنت، توقف یا خاموش شدن سیستم.
 - **تلاش دوبارهٔ خودکار** هنگام خطای شبکه.
-- **صف و زمان‌بندی**: شروع و توقف صف در ساعت و روزهای دلخواه، و خاموش کردن کامپیوتر پس از پایان صف.
+- **چند صف و زمان‌بندی**: هر تعداد صف با ساعت شروع (یک بار یا روزانه) و توقف، تعداد دانلود هم‌زمان و ترتیب فایل‌ها؛ و پس از پایان صف: بستن برنامه، Sleep، Hibernate یا خاموش کردن کامپیوتر.
 - **محدودیت سرعت**.
 - **دسته‌بندی خودکار** فایل‌ها (ویدیو، موسیقی، اسناد، فشرده، برنامه‌ها، تصاویر).
 - **افزونهٔ مرورگر** برای Chrome، Edge، Brave و Opera. دانلودها همراه با کوکی‌ها گرفته می‌شوند، پس لینک‌هایی که ورود به حساب لازم دارند هم دانلود می‌شوند.

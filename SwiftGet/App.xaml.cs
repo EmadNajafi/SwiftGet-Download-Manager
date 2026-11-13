@@ -53,7 +53,7 @@ public partial class App : Application
 
         _main = new MainWindow(_manager);
         if (!e.Args.Contains("--minimized")) _main.Show();
-        if (e.Args.Contains("--browser-setup")) Dispatcher.BeginInvoke(() => _main.OpenSettings(3));
+        if (e.Args.Contains("--browser-setup")) Dispatcher.BeginInvoke(() => _main.OpenSettings(2));
 
         _bridge = new BrowserBridge(_manager.Settings.BridgePort);
         _bridge.DownloadRequested += r => Dispatcher.BeginInvoke(() => _main.HandleBrowserRequest(r));

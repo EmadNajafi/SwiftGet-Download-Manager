@@ -48,7 +48,6 @@ public partial class SettingsWindow : Window
         {
             new(Loc.T("SetGeneral"), "", PageGeneral),
             new(Loc.T("SetConnections"), "", PageConnections),
-            new(Loc.T("SetScheduler"), "", PageScheduler),
             new(Loc.T("SetBrowser"), "", PageBrowser),
             new(Loc.T("SetAppearance"), "", PageAppearance),
             new(Loc.T("SetAbout"), "", PageAbout),
