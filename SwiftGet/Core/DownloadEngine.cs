@@ -52,8 +52,7 @@ public sealed class DownloadEngine
         using var req = Http.CreateRequest(url, referrer, cookies, userAgent);
         req.Headers.Range = new RangeHeaderValue(0, null);
         using var resp = await Http.Client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cts.Token);
-        if (!resp.IsSuccessStatusCode)
-            throw new HttpRequestException(Loc.F("ErrServer", (int)resp.StatusCode, resp.ReasonPhrase));
+        if (!resp.IsSuccessStatusCode) throw ServerError(resp);
 
         var h = resp.Content.Headers;
         long size = -1;
@@ -96,7 +95,7 @@ public sealed class DownloadEngine
             _item.ErrorMessage = null;
             _item.Status = DownloadStatus.Connecting;
 
-            var probe = await ProbeAsync(_item.Url, _item.Referrer, _item.Cookies, _item.UserAgent, ct);
+            var probe = await ProbeWithRetryAsync(ct);
             bool fresh;
             lock (_item.SyncRoot) fresh = _item.Segments.Count == 0;
             if (_item.AutoFileName && fresh) ApplyServerFileName(probe.FileName);
@@ -294,14 +293,17 @@ public sealed class DownloadEngine
             ct.ThrowIfCancellationRequested();
             var seg = TakeSegment();
             if (seg == null) return;
+            bool keepGoing;
             try
             {
-                await RunSegmentWithRetryAsync(seg, ct);
+                keepGoing = await RunSegmentWithRetryAsync(seg, ct);
             }
             finally
             {
                 lock (_item.SyncRoot) seg.Active = false;
             }
+            // the server refused this extra connection; the remaining ones take over its part
+            if (!keepGoing) return;
         }
     }
 
@@ -329,7 +331,8 @@ public sealed class DownloadEngine
         }
     }
 
-    async Task RunSegmentWithRetryAsync(Segment seg, CancellationToken ct)
+    /// <summary>Downloads a part, retrying. Returns false when this connection should stop because the server limits connections.</summary>
+    async Task<bool> RunSegmentWithRetryAsync(Segment seg, CancellationToken ct)
     {
         int attempt = 0;
         while (true)
@@ -337,15 +340,19 @@ public sealed class DownloadEngine
             try
             {
                 await DownloadSegmentAsync(seg, ct);
-                return;
+                return true;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
                 throw;
             }
-            catch (Exception) when (++attempt <= _settings.MaxRetries)
+            catch (Exception ex) when (IsBusy(ex) && OtherConnectionsActive(seg))
             {
-                await Task.Delay(TimeSpan.FromSeconds(Math.Min(30, 2 * attempt)), ct);
+                return false;
+            }
+            catch (Exception ex) when (++attempt < (IsBusy(ex) ? MaxAttempts : _settings.MaxRetries + 1))
+            {
+                await Task.Delay(RetryDelay(attempt, ex), ct);
             }
         }
     }
@@ -378,21 +385,77 @@ public sealed class DownloadEngine
         var req = Http.CreateRequest(_item.Url, _item.Referrer, _item.Cookies, _item.UserAgent);
         if (to != null) req.Headers.Range = new RangeHeaderValue(from, to);
         var resp = await SendAsync(req, ct);
+        // check for a refusal first: a busy server answers 503/429 instead of 206
+        if (!resp.IsSuccessStatusCode)
+        {
+            var error = ServerError(resp);
+            resp.Dispose();
+            req.Dispose();
+            throw error;
+        }
         if (to != null && resp.StatusCode != HttpStatusCode.PartialContent)
         {
             resp.Dispose();
             req.Dispose();
             throw new IOException(Loc.F("ErrNoRange", (int)resp.StatusCode));
         }
-        if (!resp.IsSuccessStatusCode)
-        {
-            var code = (int)resp.StatusCode;
-            var reason = resp.ReasonPhrase;
-            resp.Dispose();
-            req.Dispose();
-            throw new HttpRequestException(Loc.F("ErrServer", code, reason));
-        }
         return (await resp.Content.ReadAsStreamAsync(ct), new Both(resp, req));
+    }
+
+    // ------------------------------------------------------------------ busy servers
+
+    /// <summary>The server's refusal, with its status code and how long it asked us to wait (Retry-After).</summary>
+    static HttpRequestException ServerError(HttpResponseMessage resp)
+    {
+        var ex = new HttpRequestException(Loc.F("ErrServer", (int)resp.StatusCode, resp.ReasonPhrase), null, resp.StatusCode);
+        var retry = resp.Headers.RetryAfter;
+        TimeSpan? wait = retry?.Delta ?? (retry?.Date is { } date ? date - DateTimeOffset.UtcNow : null);
+        if (wait is { } w && w > TimeSpan.Zero) ex.Data["RetryAfter"] = w;
+        return ex;
+    }
+
+    /// <summary>The server is busy or limiting us (try again later), not "the file doesn't exist".</summary>
+    static bool IsBusy(Exception ex) =>
+        ex is HttpRequestException { StatusCode: HttpStatusCode s } &&
+        (int)s is 408 or 425 or 429 or 500 or 502 or 503 or 504;
+
+    /// <summary>Worth trying again: a busy server, or the network/connection failing.</summary>
+    static bool IsTransient(Exception ex) =>
+        IsBusy(ex) || ex is HttpRequestException { StatusCode: null } || ex is IOException || ex is TimeoutException ||
+        ex is TaskCanceledException || ex is System.Net.Sockets.SocketException;
+
+    /// <summary>3, 6, 12, 24, 48, 60… seconds, or what the server asked for (up to two minutes).</summary>
+    static TimeSpan RetryDelay(int attempt, Exception ex)
+    {
+        if (ex.Data["RetryAfter"] is TimeSpan asked) return asked > TimeSpan.FromMinutes(2) ? TimeSpan.FromMinutes(2) : asked;
+        return TimeSpan.FromSeconds(Math.Min(60, 3 * Math.Pow(2, Math.Min(attempt - 1, 5))));
+    }
+
+    int MaxAttempts => Math.Max(_settings.MaxRetries, 8);
+
+    async Task<ProbeResult> ProbeWithRetryAsync(CancellationToken ct)
+    {
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                var result = await ProbeAsync(_item.Url, _item.Referrer, _item.Cookies, _item.UserAgent, ct);
+                _item.ErrorMessage = null;
+                return result;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (Exception ex) when (IsTransient(ex) && attempt < MaxAttempts)
+            {
+                // e.g. 503 "Service Temporarily Unavailable": wait and ask again instead of failing
+                _item.ErrorMessage = Describe(ex);
+                await Task.Delay(RetryDelay(attempt, ex), ct);
+            }
+        }
+    }
+
+    bool OtherConnectionsActive(Segment seg)
+    {
+        lock (_item.SyncRoot) return _item.Segments.Any(s => s != seg && s.Active);
     }
 
     sealed class Both(IDisposable a, IDisposable b) : IDisposable

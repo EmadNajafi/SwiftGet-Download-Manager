@@ -302,7 +302,16 @@ public sealed class DownloadManager
 
     public void StartQueue(DownloadQueue q)
     {
-        foreach (var item in Items.Where(i => i.QueueId == q.Id)) _userPaused.Remove(item.Id);
+        foreach (var item in Items.Where(i => i.QueueId == q.Id))
+        {
+            _userPaused.Remove(item.Id);
+            // files that failed earlier (e.g. the server was busy) get another try
+            if (item.Status == DownloadStatus.Error)
+            {
+                item.Status = DownloadStatus.Queued;
+                item.ErrorMessage = null;
+            }
+        }
         if (!q.IsRunning) q.CompletedThisRun = 0;
         q.IsRunning = true;
         QueueStateChanged?.Invoke();

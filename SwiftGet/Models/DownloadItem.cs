@@ -180,7 +180,7 @@ public sealed class DownloadItem : INotifyPropertyChanged
     public string StatusText => Status switch
     {
         DownloadStatus.Queued => Loc.T("StatusQueued"),
-        DownloadStatus.Connecting => Loc.T("StatusConnecting"),
+        DownloadStatus.Connecting => ErrorMessage != null ? Loc.T("StatusRetrying") : Loc.T("StatusConnecting"),
         DownloadStatus.Downloading => Loc.T("StatusDownloading"),
         DownloadStatus.Paused => Downloaded > 0 ? Loc.T("StatusPaused") : Loc.T("StatusReady"),
         DownloadStatus.Completed => Loc.T("StatusCompleted"),
@@ -225,7 +225,8 @@ public sealed class DownloadItem : INotifyPropertyChanged
             {
                 DownloadStatus.Downloading => ProgressText + dot + Format.Speed(Speed) +
                                               (EtaText != "—" ? dot + Loc.F("TimeLeft", EtaText) : ""),
-                DownloadStatus.Connecting => Loc.T("StatusConnecting"),
+                DownloadStatus.Connecting when ErrorMessage != null => Loc.T("StatusRetrying") + "   ·   " + ErrorMessage,
+                DownloadStatus.Connecting => ErrorMessage != null ? Loc.T("StatusRetrying") : Loc.T("StatusConnecting"),
                 DownloadStatus.Completed => SizeText + dot + Format.Date(DateCompleted ?? DateAdded),
                 DownloadStatus.Error => ErrorMessage ?? Loc.T("StatusError"),
                 DownloadStatus.Queued => SizeText + dot + Loc.T("StatusQueued"),

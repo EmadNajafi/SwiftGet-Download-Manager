@@ -47,6 +47,7 @@ public static class Strings
         // statuses
         ["StatusQueued"] = "Queued",
         ["StatusConnecting"] = "Connecting…",
+        ["StatusRetrying"] = "Server busy, trying again…",
         ["StatusDownloading"] = "Downloading",
         ["StatusPaused"] = "Paused",
         ["StatusReady"] = "Ready",
@@ -391,6 +392,7 @@ public static class Strings
 
         ["StatusQueued"] = "در صف",
         ["StatusConnecting"] = "در حال اتصال…",
+        ["StatusRetrying"] = "سرور شلوغ است، دوباره تلاش می‌شود…",
         ["StatusDownloading"] = "در حال دانلود",
         ["StatusPaused"] = "متوقف",
         ["StatusReady"] = "آماده",
