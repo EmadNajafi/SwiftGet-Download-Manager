@@ -510,6 +510,15 @@ public partial class MainWindow : Window
             }
         }
 
+        // a video page (YouTube, Vimeo, …): pick a quality
+        if (r.Site || SiteVideo.IsSiteVideoUrl(r.Url))
+        {
+            var v = new VideoWindow(_m, r.Url, r.Referrer, r.Cookies, r.UserAgent, r.Title) { Topmost = true };
+            v.Show();
+            v.Activate();
+            return;
+        }
+
         if (_m.Settings.ShowDialogForBrowser)
         {
             var w = new AddDownloadWindow(_m, r.Url, r.Referrer, r.Cookies, r.UserAgent, r.FileName) { Topmost = true };

@@ -1,0 +1,141 @@
+<Window x:Class="SwiftGet.Views.VideoWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l="clr-namespace:SwiftGet.Core"
+        Title="{l:Tr VideoTitle}" Width="640" SizeToContent="Height" ResizeMode="NoResize"
+        FlowDirection="{Binding Flow, Source={x:Static l:Loc.I}}"
+        FontFamily="{StaticResource UiFont}" FontSize="13"
+        Background="{DynamicResource Bg}" Foreground="{DynamicResource Text}"
+        WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <!-- one quality per row, like a radio list -->
+        <Style x:Key="ChoiceItem" TargetType="ListBoxItem">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="bd" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Border}"
+                                BorderThickness="1" CornerRadius="9" Padding="12,9" Margin="0,0,0,6">
+                            <DockPanel>
+                                <Grid DockPanel.Dock="Left" Width="18" Height="18" Margin="0,0,12,0" VerticalAlignment="Center">
+                                    <Ellipse x:Name="ring" Stroke="{DynamicResource TextSecondary}" StrokeThickness="1.6"/>
+                                    <Ellipse x:Name="dot" Width="9" Height="9" Fill="{DynamicResource Accent}" Visibility="Collapsed"/>
+                                </Grid>
+                                <ContentPresenter VerticalAlignment="Center"/>
+                            </DockPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource SurfaceHover}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentSoft}"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource Accent}"/>
+                                <Setter TargetName="ring" Property="Stroke" Value="{DynamicResource Accent}"/>
+                                <Setter TargetName="dot" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <StackPanel Margin="26,22,26,24">
+        <!-- header -->
+        <StackPanel Orientation="Horizontal">
+            <Border Style="{StaticResource IconTile}" Width="46" Height="46" CornerRadius="12">
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xE714;" FontSize="21" Foreground="{DynamicResource Accent}" HorizontalAlignment="Center"/>
+            </Border>
+            <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                <TextBlock Text="{l:Tr VideoTitle}" Style="{StaticResource H1}" FontSize="19"/>
+                <TextBlock x:Name="SiteText" Style="{StaticResource Caption}" Margin="0,2,0,0" FlowDirection="LeftToRight" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </StackPanel>
+
+        <!-- video -->
+        <Border Style="{StaticResource Card}" Margin="0,20,0,0" Padding="12">
+            <DockPanel>
+                <Border DockPanel.Dock="Left" Width="160" Height="90" CornerRadius="7" Background="{DynamicResource SurfaceAlt}" ClipToBounds="True">
+                    <Grid>
+                        <TextBlock Style="{StaticResource Glyph}" Text="&#xE714;" FontSize="26" Foreground="{DynamicResource TextSecondary}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Image x:Name="Thumb" Stretch="UniformToFill"/>
+                    </Grid>
+                </Border>
+                <StackPanel Margin="14,2,0,0" VerticalAlignment="Center">
+                    <TextBlock x:Name="TitleText" FontWeight="SemiBold" FontSize="14.5" TextWrapping="Wrap" MaxHeight="62" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock x:Name="DurationText" Style="{StaticResource Caption}" Margin="0,4,0,0"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- status: loading / tools / error -->
+        <Border x:Name="StatusCard" Style="{StaticResource Card}" Margin="0,12,0,0" Padding="16,12">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="StatusGlyph" Style="{StaticResource Glyph}" Text="&#xE895;" FontSize="13"
+                               Foreground="{DynamicResource Accent}" Margin="0,0,8,0" VerticalAlignment="Top" Padding="0,2,0,0"/>
+                    <TextBlock x:Name="StatusText" FontSize="12.5" TextWrapping="Wrap" MaxWidth="520"/>
+                </StackPanel>
+                <ProgressBar x:Name="StatusBar" Style="{StaticResource ThinProgress}" Margin="0,10,0,0" IsIndeterminate="True"/>
+                <StackPanel x:Name="StatusButtons" Orientation="Horizontal" Margin="0,12,0,0" Visibility="Collapsed">
+                    <Button x:Name="ToolsButton" Style="{StaticResource AccentButton}" Click="GetTools_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Glyph}" Text="&#xE896;" FontSize="13" Margin="0,0,8,0"/>
+                            <TextBlock Text="{l:Tr VideoGetTools}"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="RetryButton" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Content="{l:Tr VideoRetry}" Click="Retry_Click"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- qualities -->
+        <StackPanel x:Name="ChoicePanel" Visibility="Collapsed">
+            <TextBlock Text="{l:Tr VideoQuality}" Style="{StaticResource FieldLabel}" Margin="0,18,0,8"/>
+            <ListBox x:Name="ChoiceList" Style="{StaticResource PlainList}" ItemContainerStyle="{StaticResource ChoiceItem}"
+                     MaxHeight="262" SelectionChanged="ChoiceList_SelectionChanged">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding Detail}" Foreground="{DynamicResource TextSecondary}"
+                                       VerticalAlignment="Center" FlowDirection="LeftToRight"/>
+                            <TextBlock Text="{Binding Label}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </DockPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <TextBlock Text="{l:Tr FieldFileName}" Style="{StaticResource FieldLabel}"/>
+            <TextBox x:Name="NameBox" Height="36" VerticalContentAlignment="Center"/>
+
+            <TextBlock Text="{l:Tr FieldSaveTo}" Style="{StaticResource FieldLabel}"/>
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButton}" MinWidth="40" Width="40" Padding="0"
+                        Margin="8,0,0,0" Click="Browse_Click" ToolTip="{l:Tr Browse}">
+                    <TextBlock Style="{StaticResource Glyph}" Text="&#xE838;" FontSize="14"/>
+                </Button>
+                <TextBox x:Name="FolderBox" Height="36" VerticalContentAlignment="Center" FlowDirection="LeftToRight"/>
+            </DockPanel>
+        </StackPanel>
+
+        <!-- buttons -->
+        <DockPanel Margin="0,22,0,0" LastChildFill="False">
+            <Button x:Name="StartButton" DockPanel.Dock="Right" Style="{StaticResource AccentButton}" IsDefault="True" Click="Start_Click" IsEnabled="False">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource Glyph}" Text="&#xE896;" FontSize="13" Margin="0,0,8,0"/>
+                    <TextBlock Text="{l:Tr StartDownload}"/>
+                </StackPanel>
+            </Button>
+            <Button x:Name="LaterButton" DockPanel.Dock="Right" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Click="Later_Click"
+                    Content="{l:Tr DownloadLater}" IsEnabled="False"/>
+            <ComboBox x:Name="QueueBox" DockPanel.Dock="Right" Width="150" Height="36" Margin="0,0,6,0"
+                      DisplayMemberPath="DisplayName" ToolTip="{l:Tr FieldQueue}"/>
+            <Button DockPanel.Dock="Left" Style="{StaticResource SecondaryButton}" IsCancel="True" Content="{l:Tr Cancel}"/>
+        </DockPanel>
+    </StackPanel>
+</Window>

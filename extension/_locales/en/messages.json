@@ -5,6 +5,7 @@
   "menuDownloadAll": { "message": "Download all links with SwiftGet" },
   "btnDownloadVideo": { "message": "Download this video" },
   "btnNoMedia": { "message": "Play the video for a moment, then click again." },
+  "mediaSite": { "message": "All qualities (choose in SwiftGet)" },
   "mediaHls": { "message": "Video stream (HLS)" },
   "optButton": { "message": "Show a \"Download this video\" button over videos" },
 

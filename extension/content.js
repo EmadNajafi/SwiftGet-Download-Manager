@@ -147,7 +147,7 @@
     e.stopPropagation();
     e.preventDefault();
     const direct = current && /^https?:/i.test(current.currentSrc || "") ? current.currentSrc : null;
-    const res = await chrome.runtime.sendMessage({ type: "pageMedia", direct });
+    const res = await chrome.runtime.sendMessage({ type: "pageMedia", direct, page: location.href });
     if (!res || !res.running) { tip(t("popupStartApp")); return; }
     const list = res.media || [];
     if (!list.length) { tip(t("btnNoMedia")); return; }
@@ -170,7 +170,7 @@
   }
 
   async function send(m) {
-    const ok = await chrome.runtime.sendMessage({ type: "download", url: m.url, referrer: location.href, fileName: m.name });
+    const ok = await chrome.runtime.sendMessage({ type: "download", url: m.url, referrer: location.href, fileName: m.name, site: !!m.site, title: document.title });
     tip(t(ok ? "popupSent" : "popupFailed"));
   }
 })();

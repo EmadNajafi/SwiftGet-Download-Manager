@@ -118,6 +118,11 @@ public sealed class DownloadItem : INotifyPropertyChanged
 
     // ---- video streams (HLS): progress counted in parts instead of byte ranges
     public bool IsStream { get; set; }
+
+    // ---- videos from sites like YouTube (downloaded with yt-dlp); Url is then the page address
+    /// <summary>yt-dlp format choice (e.g. "bv[height=1080]+ba"); set only for site videos.</summary>
+    public string? SiteFormat { get; set; }
+    [JsonIgnore] public bool IsSiteVideo => !string.IsNullOrEmpty(SiteFormat);
     public int StreamTotal { get; set; }
     public int StreamDone { get; set; }
     public long StreamBytes { get; set; }

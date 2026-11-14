@@ -164,6 +164,12 @@ public sealed class HlsDownloader
 
         HlsPlaylist? audio = null;
         var ffmpeg = Ffmpeg.Find(_settings);
+        if (playlist.AudioPlaylist != null && ffmpeg == null)
+        {
+            // sound comes separately; without ffmpeg the video would be silent, so get it once
+            try { await SiteVideo.EnsureFfmpegAsync(_settings, ct); } catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; } catch { }
+            ffmpeg = Ffmpeg.Find(_settings);
+        }
         if (playlist.AudioPlaylist != null && ffmpeg != null)
             audio = await HlsParser.LoadMediaAsync(playlist.AudioPlaylist.ToString(), _item, ct);
 
@@ -300,6 +306,7 @@ public static class Ffmpeg
         if (!string.IsNullOrWhiteSpace(s.FfmpegPath) && File.Exists(s.FfmpegPath)) return s.FfmpegPath;
         var local = Path.Combine(AppContext.BaseDirectory, "ffmpeg.exe");
         if (File.Exists(local)) return local;
+        if (File.Exists(SiteVideo.BundledFfmpeg)) return SiteVideo.BundledFfmpeg;   // downloaded for site videos
         foreach (var dir in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries))
         {
             try

@@ -20,6 +20,23 @@ const DEFAULTS = {
 
 const MEDIA_EXT = /\.(mp4|m4v|webm|mkv|mov|avi|flv|3gp|mp3|m4a|aac|ogg|oga|opus|wav|flac)(\?|#|$)/i;
 const MIN_MEDIA_BYTES = 512 * 1024;
+// video ads (pre-roll etc.) are not what the user wants to download
+const AD_URL = /doubleclick\.net|2mdn\.net|video_ads|aparat-ads|\/\/ads?\.|googlesyndication|googleads|imasdk\.googleapis|\/pagead\/|adservice|adserver|moatads|innovid|springserve|spotxchange|adsrvr|serving-sys|tremorhub|teads\.tv|vidazoo|\/vast\/|[?&]ad_type=/i;
+
+// pages on these sites hold a video only SwiftGet's video downloader (yt-dlp) can get: the button sends
+// the page and SwiftGet asks which quality to download
+const SITE_HOSTS = ["youtube.com", "youtu.be", "youtube-nocookie.com", "vimeo.com", "dailymotion.com", "dai.ly", "instagram.com",
+  "twitter.com", "x.com", "facebook.com", "fb.watch", "tiktok.com", "twitch.tv", "soundcloud.com", "reddit.com", "bilibili.com",
+  "ok.ru", "vk.com", "rumble.com", "streamable.com", "bitchute.com", "telewebion.com"];
+function isSitePage(url) {
+  try {
+    const u = new URL(url);
+    const h = u.hostname.toLowerCase();
+    return /^https?:$/.test(u.protocol) && u.pathname.length > 1 && SITE_HOSTS.some((s) => h === s || h.endsWith("." + s));
+  } catch (_) {
+    return false;
+  }
+}
 
 // ---------------------------------------------------------------- settings
 
@@ -62,7 +79,7 @@ async function appIsRunning() {
   }
 }
 
-async function sendToApp(url, referrer, fileName) {
+async function sendToApp(url, referrer, fileName, site, title) {
   let cookies = "";
   try {
     const list = await chrome.cookies.getAll({ url });
@@ -73,7 +90,7 @@ async function sendToApp(url, referrer, fileName) {
     const r = await fetchWithTimeout(appUrl(await settings()) + "/add?from=extension", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url, referrer: referrer || "", cookies, userAgent: navigator.userAgent, fileName: fileName || "" }),
+      body: JSON.stringify({ url, referrer: referrer || "", cookies, userAgent: navigator.userAgent, fileName: fileName || "", site: !!site, title: title || "" }),
     }, 3000);
     return r.ok;
   } catch (_) {
@@ -214,7 +231,7 @@ chrome.webRequest.onHeadersReceived.addListener(async (d) => {
   const type = header("content-type").toLowerCase();
   const isHls = type.includes("mpegurl") || /\.m3u8(\?|#|$)/i.test(d.url);
   const isMedia = isHls || type.startsWith("video/") || type.startsWith("audio/") || MEDIA_EXT.test(d.url);
-  if (!isMedia || /\.mpd(\?|#|$)/i.test(d.url) || /\.(ts|m4s)(\?|#|$)/i.test(d.url)) return; // DASH manifests and stream parts aren't offered
+  if (!isMedia || AD_URL.test(d.url) || AD_URL.test(d.initiator || "") || /\.mpd(\?|#|$)/i.test(d.url) || /\.(ts|m4s)(\?|#|$)/i.test(d.url)) return; // DASH manifests and stream parts aren't offered
 
   // total size: Content-Range "bytes a-b/total" for partial responses, otherwise Content-Length
   const range = header("content-range").match(/\/(\d+)$/);
@@ -223,6 +240,11 @@ chrome.webRequest.onHeadersReceived.addListener(async (d) => {
 
   const base = d.url.split("#")[0];
   const entry = { url: base, type: type.split(";")[0] || extOf(base), size: isHls ? 0 : size, kind: isHls ? "hls" : type.startsWith("audio") || /\.(mp3|m4a|aac|ogg|oga|opus|wav|flac)(\?|$)/i.test(base) ? "audio" : "video", time: Date.now() };
+  if (isHls) {
+    if (d.method && d.method !== "GET") return;
+    if ((await mediaFor(d.tabId)).some((m) => m.url === base)) return; // live streams reload their playlist every few seconds
+    Object.assign(entry, await readPlaylist(base));
+  }
   await addMedia(d.tabId, entry);
 }, { urls: ["<all_urls>"], types: ["media", "xmlhttprequest", "other", "object"] }, ["responseHeaders"]);
 
@@ -237,6 +259,33 @@ function addMedia(tabId, entry) {
     updateBadge(tabId);
   }).catch(() => {});
   return mediaQueue;
+}
+
+// HLS: a master playlist lists the qualities (and separate audio). Only the master is offered;
+// the qualities it lists are hidden, so the video shows up once (SwiftGet picks the best quality).
+const noQuery = (u) => u.split(/[?#]/)[0];
+async function readPlaylist(url) {
+  try {
+    const r = await fetchWithTimeout(url, { credentials: "include" }, 5000);
+    const text = await r.text();
+    if (!text.includes("#EXT-X-STREAM-INF")) return { master: false };
+    const parts = [];
+    let best = 0;
+    const lines = text.split(/\r?\n/);
+    lines.forEach((line, i) => {
+      if (line.startsWith("#EXT-X-STREAM-INF")) {
+        const h = Number((line.match(/RESOLUTION=\d+x(\d+)/) || [])[1] || 0);
+        best = Math.max(best, h);
+        const next = lines.slice(i + 1).find((l) => l && !l.startsWith("#"));
+        if (next) parts.push(noQuery(new URL(next.trim(), url).href));
+      }
+      const uri = line.startsWith("#EXT-X-MEDIA") && line.match(/URI="([^"]+)"/);
+      if (uri) parts.push(noQuery(new URL(uri[1], url).href));
+    });
+    return { master: true, parts, quality: best };
+  } catch (_) {
+    return {};
+  }
 }
 
 // forget a tab's media when it navigates or closes
@@ -254,7 +303,7 @@ function mediaName(m, title) {
   if (m.kind !== "hls") {
     try {
       const last = decodeURIComponent(new URL(m.url).pathname.split("/").pop() || "");
-      if (/\.[a-z0-9]{2,4}$/i.test(last)) return last;
+      if (/\.[a-z0-9]{2,4}$/i.test(last) && !/^(file|video|videoplayback|index|media|stream|master|playlist)\./i.test(last)) return last;
     } catch (_) {}
   }
   const ext = m.kind === "hls" ? "mp4" : m.kind === "audio" ? "mp3" : ((m.type || "").split("/")[1] || "mp4").replace("x-matroska", "mkv");
@@ -262,12 +311,39 @@ function mediaName(m, title) {
   return `${base}.${ext}`;
 }
 
+/// The page itself, for SwiftGet's video downloader (YouTube etc., or when nothing else was found).
+function siteEntry(pageUrl, title) {
+  return { kind: "site", url: pageUrl, name: title || pageUrl, label: chrome.i18n.getMessage("mediaSite"), size: 0, site: true };
+}
+
+function withSite(media, pageUrl, title) {
+  if (!pageUrl || !/^https?:/i.test(pageUrl)) return media;
+  if (isSitePage(pageUrl)) return [siteEntry(pageUrl, title), ...media.filter((m) => m.kind !== "video" && m.kind !== "audio" || m.size > 0)];
+  return media.length ? media : [siteEntry(pageUrl, title)];
+}
+
 function describe(list, title) {
-  return list.map((m) => ({
-    ...m,
-    name: mediaName(m, title),
-    label: m.kind === "hls" ? chrome.i18n.getMessage("mediaHls") : m.type,
-  }));
+  // hide the qualities/audio of a master playlist we also have
+  const hidden = new Set(list.filter((m) => m.master).flatMap((m) => m.parts || []));
+  for (const m of list) if (m.kind === "hls" && !m.quality) m.quality = Number((m.url.match(/[-_\/](\d{3,4})p[._\/-]/) || [])[1] || 0);
+  const shown = list.filter((m) => !(m.kind === "hls" && !m.master && hidden.has(noQuery(m.url))) && !AD_URL.test(m.url));
+  // main video first: streams with several qualities, then the biggest files
+  const rank = (m) => (m.master ? 3 : m.kind === "hls" ? 2 : m.kind === "video" ? 1 : 0);
+  shown.sort((a, b) => rank(b) - rank(a) || (b.quality || 0) - (a.quality || 0) || (b.size || 0) - (a.size || 0));
+  const used = {};
+  return shown.map((m) => {
+    let name = mediaName(m, title);
+    if (used[name] && m.quality) {
+      const dot = name.lastIndexOf(".");
+      name = `${name.slice(0, dot)} ${m.quality}p${name.slice(dot)}`;
+    }
+    if (used[name]) {
+      const dot = name.lastIndexOf(".");
+      name = `${name.slice(0, dot)} (${++used[name]})${name.slice(dot)}`;
+    } else used[name] = 1;
+    const label = m.kind === "hls" ? chrome.i18n.getMessage("mediaHls") + (m.quality ? ` · ${m.quality}p` : "") : m.type;
+    return { ...m, name, label };
+  });
 }
 
 // ---------------------------------------------------------------- popup messages
@@ -280,21 +356,23 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
         reply({
           running: await appIsRunning(),
           settings: await settings(),
-          media: tab ? describe(await mediaFor(tab.id), tab.title) : [],
+          media: tab ? withSite(describe(await mediaFor(tab.id), tab.title), tab.url, tab.title) : [],
           tabUrl: tab?.url || "",
           tabTitle: tab?.title || "",
         });
         break;
       }
       case "download":
-        reply(await sendToApp(msg.url, msg.referrer, msg.fileName));
+        reply(await sendToApp(msg.url, msg.referrer, msg.fileName, msg.site, msg.title));
         break;
       case "pageMedia": {
         // from the floating button in a page
         const tabId = _sender.tab?.id;
         let list = tabId != null ? await mediaFor(tabId) : [];
         if (msg.direct && !list.some((m) => m.url === msg.direct)) list = [{ url: msg.direct, type: "video/mp4", size: 0, kind: "video" }, ...list];
-        reply({ running: await appIsRunning(), media: describe(list, _sender.tab?.title) });
+        // inside an embedded player (youtube.com/embed/…) the frame's own address is the video page
+        const page = msg.page && isSitePage(msg.page) ? msg.page : _sender.tab?.url;
+        reply({ running: await appIsRunning(), media: withSite(describe(list, _sender.tab?.title), page, _sender.tab?.title) });
         break;
       }
       default:

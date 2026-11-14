@@ -364,7 +364,7 @@ public sealed class DownloadManager
         try
         {
             var probe = await DownloadEngine.ProbeAsync(url, referrer ?? item.Referrer, cookies ?? item.Cookies, item.UserAgent, CancellationToken.None);
-            if (!item.IsStream && item.TotalSize > 0 && probe.Size > 0 && probe.Size != item.TotalSize)
+            if (!item.IsStream && !item.IsSiteVideo && item.TotalSize > 0 && probe.Size > 0 && probe.Size != item.TotalSize)
                 return Loc.F("RefreshSizeMismatch", Format.Size(probe.Size), Format.Size(item.TotalSize));
             bool wasRunning = IsRunning(item);
             if (_engines.TryGetValue(item.Id, out var e))
@@ -400,7 +400,7 @@ public sealed class DownloadManager
             {
                 q.LastSync = DateTime.Now;
                 bool changedAny = false;
-                foreach (var item in ItemsOf(q).Where(i => i.Status == DownloadStatus.Completed && !i.IsStream))
+                foreach (var item in ItemsOf(q).Where(i => i.Status == DownloadStatus.Completed && !i.IsStream && !i.IsSiteVideo))
                 {
                     try
                     {

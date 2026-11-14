@@ -95,6 +95,12 @@ public sealed class DownloadEngine
             _item.ErrorMessage = null;
             _item.Status = DownloadStatus.Connecting;
 
+            if (_item.IsSiteVideo)
+            {
+                await RunSiteVideoAsync(ct);
+                return;
+            }
+
             var probe = await ProbeWithRetryAsync(ct);
             bool fresh;
             lock (_item.SyncRoot) fresh = _item.Segments.Count == 0;
@@ -195,6 +201,20 @@ public sealed class DownloadEngine
         if (!string.Equals(Path.GetExtension(_item.FileName), ext, StringComparison.OrdinalIgnoreCase))
             _item.FileName = Path.GetFileNameWithoutExtension(_item.FileName) + ext;
         _item.TotalSize = new FileInfo(path).Length;
+        Finish(path);
+        try { Directory.Delete(_item.StreamPartsDir, true); } catch { }
+    }
+
+    async Task RunSiteVideoAsync(CancellationToken ct)
+    {
+        _item.ResumeSupported = true;
+        var path = await SiteVideo.DownloadAsync(_settings, _limiter, _item, ct);
+        var ext = Path.GetExtension(path);
+        if (!string.Equals(Path.GetExtension(_item.FileName), ext, StringComparison.OrdinalIgnoreCase))
+            _item.FileName = Path.GetFileNameWithoutExtension(_item.FileName) + ext;
+        var size = new FileInfo(path).Length;
+        lock (_item.SyncRoot) _item.Segments = new List<Segment> { new() { Start = 0, End = size - 1, Downloaded = size } };
+        _item.TotalSize = size;
         Finish(path);
         try { Directory.Delete(_item.StreamPartsDir, true); } catch { }
     }

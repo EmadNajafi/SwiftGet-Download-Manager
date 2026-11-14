@@ -5,7 +5,9 @@ using System.Text.Json;
 
 namespace SwiftGet.Core;
 
-public sealed record BridgeRequest(string Url, string? Referrer, string? Cookies, string? UserAgent, string? FileName);
+/// <param name="Site">The extension sends a video page (YouTube etc.), not a file link.</param>
+public sealed record BridgeRequest(string Url, string? Referrer, string? Cookies, string? UserAgent, string? FileName,
+    bool Site = false, string? Title = null);
 
 public sealed record BridgeLink(string Url, string? Cookies, string? FileName);
 public sealed record BridgeLinks(List<BridgeLink> Items, string? Referrer, string? UserAgent, string? Title);

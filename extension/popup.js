@@ -74,7 +74,7 @@ function render(state) {
     btn.disabled = !state.running;
     btn.addEventListener("click", async () => {
       btn.disabled = true;
-      const ok = await chrome.runtime.sendMessage({ type: "download", url: m.url, referrer: state.tabUrl, fileName: name });
+      const ok = await chrome.runtime.sendMessage({ type: "download", url: m.url, referrer: state.tabUrl, fileName: name, site: !!m.site, title: state.tabTitle });
       btn.classList.add(ok ? "done" : "fail");
       btn.innerHTML = ok ? ICONS.check : ICONS.cross;
       btn.title = t(ok ? "popupSent" : "popupFailed");

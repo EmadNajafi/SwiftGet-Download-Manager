@@ -25,7 +25,8 @@
 **Downloading**
 - **Multi-connection downloads** (up to 32) with dynamic splitting, **pause and resume**, automatic retries and a speed limiter.
 - **HTTP, HTTPS and FTP**, including resume and multiple connections over FTP.
-- **Video streams (HLS / m3u8)**: picks the best quality, decrypts AES-128 streams and joins the parts. With [ffmpeg](https://ffmpeg.org) installed, streams are saved as MP4 and separate audio is merged in; without it they're saved as `.ts`.
+- **YouTube and other video sites**: the "Download this video" button on YouTube, Vimeo, Dailymotion, Instagram, Twitter/X, TikTok and more opens a window where you pick the quality (144p up to 4K, or audio only). This uses the free tools [yt-dlp](https://github.com/yt-dlp/yt-dlp) and [ffmpeg](https://ffmpeg.org), which SwiftGet downloads once (about 110 MB) when you first need them, and keeps yt-dlp up to date.
+- **Video streams (HLS / m3u8)**: picks the best quality, decrypts AES-128 streams and joins the parts. Streams are saved as MP4 with ffmpeg, and separate audio is merged in (ffmpeg is fetched automatically when a stream needs it).
 - **Refresh download address**: when a link expires, paste a new one (or click it again in the browser) and the download continues where it stopped.
 - **Batch download**: `file[001-100].zip`, `part[a-f].rar` or `file*.zip` with a range.
 - **Site grabber**: explore a website and collect the files it links to.
@@ -136,7 +137,8 @@ Add a table to `SwiftGet/Core/Strings.cs` with the same keys as `En`, then add i
 - **دانلود چندبخشی**: هر فایل به چند بخش تقسیم می‌شود و بخش‌ها هم‌زمان دانلود می‌شوند (پیش‌فرض ۸ اتصال، تا ۳۲ اتصال).
 - **توقف و ادامهٔ دانلود** پس از قطع اینترنت، توقف یا خاموش شدن سیستم.
 - **تلاش دوبارهٔ خودکار** هنگام خطای شبکه.
-- **ویدیوهای استریم (HLS / m3u8)** با انتخاب بهترین کیفیت و پشتیبانی از رمزنگاری AES-128.
+- **دانلود از یوتیوب و سایت‌های ویدیو** (ویمیو، دیلی‌موشن، اینستاگرام، توییتر، تیک‌تاک و…) با انتخاب کیفیت از 144p تا 4K یا فقط صدا. ابزارهای رایگان yt-dlp و ffmpeg بار اول خودکار دانلود می‌شوند.
+- **ویدیوهای استریم (HLS / m3u8)** مثل آپارات و TED با انتخاب بهترین کیفیت، پشتیبانی از رمزنگاری AES-128 و چسباندن صدای جداگانه.
 - **به‌روزرسانی آدرس دانلود** برای لینک‌های منقضی‌شده، **دانلود گروهی**، **جمع‌آوری فایل از سایت**، **زیر نظر گرفتن کلیپ‌بورد** و پشتیبانی **FTP**.
 - **دکمهٔ «دانلود این ویدیو»** روی ویدیوهای سایت‌ها و **دانلود همهٔ لینک‌های صفحه**.
 - **پروکسی دلخواه**، **نام کاربری سایت‌ها**، اسکن با ضدویروس و **به‌روزرسانی خودکار برنامه**.

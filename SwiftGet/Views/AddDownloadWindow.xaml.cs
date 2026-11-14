@@ -78,6 +78,14 @@ public partial class AddDownloadWindow : Window
             return;
         }
 
+        if (SiteVideo.IsSiteVideoUrl(url))
+        {
+            var v = new VideoWindow(_m, url, _referrer, _cookies, _userAgent) { Topmost = Topmost };
+            v.Show();
+            Close();
+            return;
+        }
+
         _probeCts?.Cancel();
         var cts = _probeCts = new CancellationTokenSource();
         _probedUrl = url;
